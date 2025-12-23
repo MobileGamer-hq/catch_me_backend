@@ -1,70 +1,104 @@
-const { Firestore } = require("../methods/database");
-const {db} = require("../services/firebaseAdmin"); // adjust path if needed
+const { db } = require("../services/firebaseAdmin");
 
+/* -------------------------------------------------------------
+   GET ALL USERS
+------------------------------------------------------------- */
 const getUsers = async (req, res) => {
     try {
-        const users = await Firestore.getAll("users");
+        const snapshot = await db.collection("users").get();
+
+        const users = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
 
         res.status(200).json(users);
     } catch (err) {
-        console.error(err);
+        console.error("getUsers ERROR:", err);
         res.status(500).json({ error: "Failed to fetch users" });
     }
 };
 
+/* -------------------------------------------------------------
+   GET SINGLE USER
+------------------------------------------------------------- */
 const getUser = async (req, res) => {
     try {
-        const user = await Firestore.getById("users", req.params.id);
+        const userId = req.params.id;
 
-        if (!user) {
+        const snap = await db.collection("users").doc(userId).get();
+
+        if (!snap.exists) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        res.status(200).json(user);
+        res.status(200).json({
+            id: snap.id,
+            ...snap.data(),
+        });
     } catch (err) {
-        console.error(err);
+        console.error("getUser ERROR:", err);
         res.status(500).json({ error: "Failed to fetch user" });
     }
 };
 
+/* -------------------------------------------------------------
+   DELETE USER
+------------------------------------------------------------- */
 const deleteUser = async (req, res) => {
     try {
-        const user = await Firestore.getById("users", req.params.id);
+        const userId = req.params.id;
+        const userRef = db.collection("users").doc(userId);
 
-        if (!user) {
+        const snap = await userRef.get();
+
+        if (!snap.exists) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        await Firestore.deleteById("users", req.params.id);
+        await userRef.delete();
+
         res.status(200).json({ message: "User deleted successfully" });
     } catch (err) {
-        console.error(err);
+        console.error("deleteUser ERROR:", err);
         res.status(500).json({ error: "Failed to delete user" });
     }
 };
 
-// Simple search by name using Firestore "where" queries
+/* -------------------------------------------------------------
+   SEARCH USERS (PREFIX SEARCH)
+------------------------------------------------------------- */
 const searchUsers = async (req, res) => {
     try {
-        const queryParam = req.query.q;
+        const query = (req.query.q || "").trim();
 
-        if (!queryParam) {
+        if (!query) {
             return res.status(400).json({ error: "Missing search query" });
         }
 
-        // Firestore doesn't support full text search; this is a basic prefix search
         const snapshot = await db
             .collection("users")
-            .where("name", ">=", queryParam)
-            .where("name", "<=", queryParam + "\uf8ff")
+            .orderBy("name")
+            .startAt(query)
+            .endAt(query + "\uf8ff")
+            .limit(20)
             .get();
 
-        const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const results = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
         res.status(200).json(results);
     } catch (err) {
-        console.error(err);
+        console.error("searchUsers ERROR:", err);
         res.status(500).json({ error: "Search failed" });
     }
 };
 
-module.exports = { getUsers, getUser, deleteUser, searchUsers };
+module.exports = {
+    getUsers,
+    getUser,
+    deleteUser,
+    searchUsers,
+};
