@@ -92,11 +92,12 @@ async function getFeedPosts(user) {
         const thoughts = [];
 
         for (let post of feed) {
+            console.log(post.type)
             const type = (post.type || "").toLowerCase();
             if(getBaseId(post.id) === user.id) continue;
             if (type === "highlight") {
                 highlights.push(post.id);
-            } else if (type === "image-post" || type === "photo" || post.imageUrl) {
+            } else if (type === "image-post" || type === "image" || post.imageUrl) {
                 images.push(post.id);
             } else {
                 thoughts.push(post.id);
