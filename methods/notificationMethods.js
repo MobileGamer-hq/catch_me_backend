@@ -1,48 +1,37 @@
 const { db, admin } = require("../services/firebaseAdmin");
-const { LinkUtils } = require("../services/linkUtilities");
+const {Firestore} = require("./database");
+const {LinkUtils} = require("../services/linkUtilities");
 
 // Send notification to all followers
-const notifyFollowers = async (type = "post", userId, targetId) => {
-    // Fetch triggering user
-    const userSnap = await db.collection("users").doc(userId).get();
-    if (!userSnap.exists) throw new Error("User not found!");
+const notifyFollowers = async (type = 'post', userId, id) => {
+    // Get the user who triggered the notification
+    const user = await Firestore.getById('users', userId);
+    if (!user) throw new Error("User not found!");
 
-    const user = { id: userId, ...userSnap.data() };
     const followers = user.followers || [];
 
-    if (!followers.length) return;
-
-    const batch = db.batch();
-
+    // Loop followers
     for (const followerId of followers) {
-        const notifId = `${userId}-${targetId}-${Date.now()}`;
-
         const notif = {
-            id: notifId,
+            id: `${userId}-${Date.now()}`,
             recipientId: followerId,
             senderId: userId,
             title: `${user.username} made a new ${type}!`,
-            body: {
-                type,
-                fromUser: userId,
-            },
-            sentAt: admin.firestore.FieldValue.serverTimestamp(),
-            link:
-                type === "game"
-                    ? LinkUtils.generateGameLink(targetId)
-                    : LinkUtils.generatePostLink(targetId),
-            read: false,
+            body: JSON.stringify({ type, fromUser: userId }),
+            sentAt: Date.now(),
+            link: type === 'game' ? LinkUtils.generateGameLink(id) : LinkUtils.generatePostLink(id),
         };
 
-        const userRef = db.collection("users").doc(followerId);
+        // Add notification using arrayUnion
+        await db
+            .collection("users")
+            .doc(followerId)
+            .update({
+                notifications: admin.firestore.FieldValue.arrayUnion(notif)
+            });
 
-        batch.update(userRef, {
-            notifications: admin.firestore.FieldValue.arrayUnion(notif),
-        });
+        console.log(`Notification sent to ${followerId}`);
     }
-
-    await batch.commit();
-    console.log(`Notifications sent to ${followers.length} followers`);
 };
 
 module.exports = { notifyFollowers };
