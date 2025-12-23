@@ -10,13 +10,14 @@ function watchPosts() {
     db.collection("posts").onSnapshot(async snapshot => {
         if (isInitialLoad) {
             isInitialLoad = false;
+            console.log("Initializing posts");
             return;
         }
 
         for (const change of snapshot.docChanges()) {
             if (change.type === "added") {
                 const post = change.doc.data();
-                console.log("🔥 New Post:", post.id);
+                console.log("New Post:", post.id);
 
                 await notifyFollowers(
                     "post",
@@ -34,16 +35,17 @@ function watchPosts() {
 function watchGames() {
     let isInitialLoad = true;
 
-    db.collection("games").onSnapshot(async snapshot => {
-        // if (isInitialLoad) {
-        //     isInitialLoad = false;
-        //     return;
-        // }
+    db.collection("games").where("type", "==", "game").onSnapshot(async snapshot => {
+        if (isInitialLoad) {
+            isInitialLoad = false;
+            console.log("Initializing games");
+            return;
+        }
 
         for (const change of snapshot.docChanges()) {
             if (change.type === "added") {
                 const game = change.doc.data();
-                console.log("🏀 New Game:", game.id);
+                console.log("New Game:", game.id);
 
                 await notifyFollowers(
                     "game",
@@ -64,13 +66,14 @@ function watchEvents() {
     db.collection("events").onSnapshot(async snapshot => {
         if (isInitialLoad) {
             isInitialLoad = false;
+            console.log("Initializing events");
             return;
         }
 
         for (const change of snapshot.docChanges()) {
             if (change.type === "added") {
                 const event = change.doc.data();
-                console.log("📅 New Event:", change.doc.id);
+                console.log("New Event:", change.doc.id);
 
                 await notifyFollowers(
                     "events",

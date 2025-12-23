@@ -1,23 +1,6 @@
-const { db } = require("../firebase");
-const { v4: uuidv4 } = require("uuid");
+const {db} = require("../services/firebaseAdmin");
 
 const eventsCollection = db.collection("events");
-
-// Create Event
-const createEvent = async (req, res) => {
-  try {
-    const newEvent = {
-      id: uuidv4(),
-      ...req.body,
-      createdAt: new Date().toISOString(),
-    };
-
-    await eventsCollection.doc(newEvent.id).set(newEvent);
-    res.status(201).json(newEvent);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create event", details: error.message });
-  }
-};
 
 // Update Event
 const updateEvent = async (req, res) => {
@@ -94,52 +77,11 @@ const getEventsByType = async (req, res) => {
   }
 };
 
-// Get Events by Status
-const getEventsByStatus = async (req, res) => {
-  try {
-    const snapshot = await eventsCollection.where("status", "==", req.params.status).get();
-    const events = snapshot.docs.map(doc => doc.data());
-    res.status(200).json(events);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to get events by status", details: error.message });
-  }
-};
-
-// Get Events by Location
-const getEventsByLocation = async (req, res) => {
-  try {
-    const snapshot = await eventsCollection.where("location", "==", req.params.location).get();
-    const events = snapshot.docs.map(doc => doc.data());
-    res.status(200).json(events);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to get events by location", details: error.message });
-  }
-};
-
-// Get Events by Date Range
-const getEventsByDateRange = async (req, res) => {
-  try {
-    const { start, end } = req.params;
-    const snapshot = await eventsCollection
-      .where("date", ">=", start)
-      .where("date", "<=", end)
-      .get();
-    const events = snapshot.docs.map(doc => doc.data());
-    res.status(200).json(events);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to get events by date range", details: error.message });
-  }
-};
-
 module.exports = {
-  createEvent,
   updateEvent,
   deleteEvent,
   getEventById,
   getAllEvents,
   getEventsByUserId,
   getEventsByType,
-  getEventsByStatus,
-  getEventsByLocation,
-  getEventsByDateRange,
 };
