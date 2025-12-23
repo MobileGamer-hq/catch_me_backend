@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { createUser, getUser } = require("../controllers/userController");
+const {  getUser, deleteUser, searchUsers, getUsers } = require("../controllers/userController");
 
 //User
-router.post("/create", createUser);
-router.get("/:id", getUser);
+router.get("/", getUsers); // get all users
+router.get("/:id", getUser); //
+router.delete('/:id', deleteUser ); //
+router.get('/search', searchUsers) //search users by name, email, etc.
 
-//Users
 
 
 module.exports = router;

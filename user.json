@@ -1,0 +1,283 @@
+{
+  "id": "xfNhoQ65r8cqYL8P8hGt6lw6SJr2",
+  "recentViewedProfiles": [],
+  "pendingChallenges": [],
+  "tournaments": [],
+  "achievements": [],
+  "favoriteSports": [],
+  "algorithmData": {
+    "recentViewedProfiles": [],
+    "interestedSports": [],
+    "searchHistory": [],
+    "tags": [],
+    "trendingEngagement": []
+  },
+  "posts": [],
+  "analytics": {
+    "postViews": [],
+    "lastActive": null,
+    "timeSpentDaily": [],
+    "profileViews": 0
+  },
+  "createdAt": "2025-12-08T18:39:18.382799",
+  "password": "elect123",
+  "recentSearches": [],
+  "stats": [],
+  "games": [],
+  "events": [],
+  "updatedAt": "2025-12-08T18:39:18.382800",
+  "height": {
+    "unit": "ft",
+    "value": 0
+  },
+  "settings": {
+    "showAge": true,
+    "showLocation": true,
+    "pushNotifications": {
+      "comments": true,
+      "follows": true,
+      "messages": true,
+      "likes": true
+    },
+    "privateProfile": false,
+    "language": "en",
+    "darkMode": false,
+    "allowMessagesFrom": "everyone"
+  },
+  "seasons": [],
+  "level": 1,
+  "customEvents": [],
+  "leagues": [],
+  "joinedCommunities": [],
+  "weight": {
+    "unit": "kg",
+    "value": 0
+  },
+  "feed": {
+    "thoughts": [],
+    "highlights": [],
+    "stories": [],
+    "games": [],
+    "posts": [],
+    "events": []
+  },
+  "followers": [],
+  "nextLevelXP": 100,
+  "chats": [],
+  "blockedUsers": [],
+  "imagePost": [],
+  "notifications": [],
+  "savedPosts": [],
+  "gender": "",
+  "favoriteAthletes": [],
+  "challenges": [],
+  "experiencePoints": 0,
+  "flags": {
+    "warnings": 0,
+    "reportsAgainst": [],
+    "banned": false,
+    "banReason": ""
+  },
+  "clubs": [],
+  "email": "electfootballteam@gmail.com",
+  "thoughts": [],
+  "likedPosts": [],
+  "profilePic": "",
+  "verified": false,
+  "archivedPosts": [],
+  "groups": [],
+  "favoriteTeams": [],
+  "schedule": [],
+  "highlights": [],
+  "xp": 0,
+  "searchHistory": [],
+  "age": 0,
+  "username": "ElectFootballTeam",
+  "story": [],
+  "country": "Nigeria",
+  "role": "Team",
+  "contact": {
+    "youtube": "",
+    "snapchat": "",
+    "website": "",
+    "phone": "",
+    "tiktok": "",
+    "facebook": "",
+    "x": "",
+    "instagram": "",
+    "email": ""
+  },
+  "location": "Lagos, Nigeria",
+  "dob": "2025-12-08T00:00:00.000",
+  "name": "Elect Football Team",
+  "myCustomEvents": [],
+  "myGames": [],
+  "bio": "",
+  "myTournaments": [],
+  "interestedTeams": [],
+  "myChallenges": [],
+  "requestVerification": false,
+  "tags": [
+    "Team",
+    "Football",
+    "Elect Football Team"
+  ],
+  "interestedAthletes": [
+    "j2EKSe3vpYcVWtok8KsQxah2uDs2",
+    "90kJv1SZDKYtrNHE2T2cIfpdRyL2"
+  ],
+  "following": [
+    "ShcXfhYskpUkmhrXRqGASTx1xDc2",
+    "j2EKSe3vpYcVWtok8KsQxah2uDs2",
+    "90kJv1SZDKYtrNHE2T2cIfpdRyL2"
+  ],
+  "roleData": {
+    "headCoachId": "",
+    "achievements": [],
+    "bio": "",
+    "lineUp": {
+      "formationName": "default",
+      "substitutes": [],
+      "active": [],
+      "positions": {
+        "-0.3-0.5": {
+          "x": -0.3,
+          "y": 0.5,
+          "id": "-0.3-0.5",
+          "position": "",
+          "player": null
+        },
+        "-0.4-0.2": {
+          "x": -0.4,
+          "y": 0.2,
+          "id": "-0.4-0.2",
+          "position": "",
+          "player": null
+        },
+        "0.6--0.3": {
+          "x": 0.6,
+          "y": -0.3,
+          "id": "0.6--0.3",
+          "position": "",
+          "player": null
+        },
+        "0.3-0.5": {
+          "x": 0.3,
+          "y": 0.5,
+          "id": "0.3-0.5",
+          "position": "",
+          "player": null
+        },
+        "0.0-0.9": {
+          "x": 0,
+          "y": 0.9,
+          "id": "0.0-0.9",
+          "position": "",
+          "player": null
+        },
+        "0.7-0.5": {
+          "x": 0.7,
+          "y": 0.5,
+          "id": "0.7-0.5",
+          "position": "",
+          "player": null
+        },
+        "0.4-0.2": {
+          "x": 0.4,
+          "y": 0.2,
+          "id": "0.4-0.2",
+          "position": "",
+          "player": null
+        },
+        "-0.6--0.3": {
+          "x": -0.6,
+          "y": -0.3,
+          "id": "-0.6--0.3",
+          "position": "",
+          "player": null
+        },
+        "-0.7-0.5": {
+          "x": -0.7,
+          "y": 0.5,
+          "id": "-0.7-0.5",
+          "position": "",
+          "player": null
+        }
+      },
+      "sport": "Football"
+    },
+    "athletes": [],
+    "matches": [],
+    "logoUrl": "",
+    "coachIds": [],
+    "followers": [],
+    "stats": [
+      {
+        "label": "Average Speed",
+        "value": 0
+      },
+      {
+        "label": "Team Chemistry",
+        "value": 0
+      },
+      {
+        "label": "Defensive Strength",
+        "value": 0
+      },
+      {
+        "label": "Offensive Strength",
+        "value": 0
+      },
+      {
+        "label": "Win Rate",
+        "value": 0
+      },
+      {
+        "label": "Injury Rate",
+        "value": 0
+      },
+      {
+        "label": "Team Morale",
+        "value": 0
+      },
+      {
+        "label": "Discipline",
+        "value": 0
+      }
+    ],
+    "schoolId": "Covenant University",
+    "name": "Elect Football Team",
+    "performanceStats": [
+      {
+        "label": "Goals",
+        "value": 0
+      },
+      {
+        "label": "Assists",
+        "value": 0
+      },
+      {
+        "label": "Penalties",
+        "value": 0
+      },
+      {
+        "label": "Yellow Cards",
+        "value": 0
+      },
+      {
+        "label": "Red Cards",
+        "value": 0
+      },
+      {
+        "label": "Pass Accuracy (%)",
+        "value": 0
+      }
+    ],
+    "id": "xfNhoQ65r8cqYL8P8hGt6lw6SJr2",
+    "sport": "Football",
+    "playerIds": []
+  },
+  "interestedSports": [
+    "Football"
+  ]
+}

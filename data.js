@@ -400,6 +400,7 @@ const notification = {
   linkTo: "",
   read: false,
   sendTime: null,
+  sendDate: null
 };
 
 
