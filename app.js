@@ -17,6 +17,10 @@ app.get('/', (req, res) => {
     res.send('Catch Me Backend')
 })
 
+app.get('/ping', (req, res) => {
+    res.send('Pong!')
+})
+
 app.use("/api/users", userRoutes);
 
 module.exports = app;
