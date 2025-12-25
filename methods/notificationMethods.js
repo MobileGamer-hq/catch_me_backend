@@ -13,24 +13,28 @@ const notifyFollowers = async (type = 'post', userId, id) => {
     // Loop followers
     for (const followerId of followers) {
         const notif = {
-            id: `${userId}-${Date.now()}`,
+            id: `${userId}-${Date.now()}-notification-${type}`,
             recipientId: followerId,
             senderId: userId,
             title: `${user.username} made a new ${type}!`,
-            body: JSON.stringify({ type, fromUser: userId }),
+            body: { type, fromUser: userId },
             sentAt: Date.now(),
             link: type === 'game' ? LinkUtils.generateGameLink(id) : LinkUtils.generatePostLink(id),
         };
 
         // Add notification using arrayUnion
-        await db
-            .collection("users")
-            .doc(followerId)
-            .update({
-                notifications: admin.firestore.FieldValue.arrayUnion(notif)
-            });
+        try{
+            await db
+                .collection("users")
+                .doc(followerId)
+                .update({
+                    notifications: admin.firestore.FieldValue.arrayUnion(notif)
+                });
 
-        console.log(`Notification sent to ${followerId}`);
+        }catch(err){
+            console.error(err);
+        }
+        console.log(`Notification ${notif} sent to ${followerId}`);
     }
 };
 
