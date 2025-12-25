@@ -22,14 +22,18 @@ const flushEngagements = async () => {
         const { count, type } = data[key];
         const id = key.split("_")[1];
 
-        const ref =
-            type === "post"
-                ? db.collection("posts").doc(id)
-                : db.collection("games").doc(id);
+       try{
+           const ref =
+               type === "post"
+                   ? db.collection("posts").doc(id)
+                   : db.collection("events").doc(id);
 
-        batch.update(ref, {
-            engagementScore: db.FieldValue.increment(count),
-        });
+           batch.update(ref, {
+               engagementScore: db.FieldValue.increment(count),
+           });
+       }catch (e) {
+           console.error(e.message);
+       }
     }
 
     await batch.commit();
