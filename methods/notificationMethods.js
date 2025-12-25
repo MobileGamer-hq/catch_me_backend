@@ -32,9 +32,9 @@ const notifyFollowers = async (type = 'post', userId, id) => {
                 });
 
         }catch(err){
-            console.error(err);
+            console.error("Couldn't Add Notificatio! ${err.message}");
         }
-        console.log(`Notification ${notif} sent to ${followerId}`);
+        console.log(`Notification ${notif.id} sent to ${followerId}`);
     }
 };
 

@@ -54,6 +54,7 @@ const increaseEngagement = async (req, res) => {
         data[key].count += 1;
 
         writeTempFile(data);
+        console.log('Enagement Cached');
 
         res.status(200).json({ message: "Engagement cached" });
     } catch (err) {
