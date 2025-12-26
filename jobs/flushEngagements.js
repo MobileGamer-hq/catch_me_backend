@@ -1,47 +1,81 @@
 const fs = require("fs");
 const path = require("path");
-const {db} = require("../services/firebaseAdmin");
+const admin = require("../services/firebaseAdmin");
 
-const FILE_PATH = path.join(
+const db = admin.db;
+const FieldValue = admin.admin.firestore.FieldValue;
+
+const ENGAGEMENT_FILE_PATH = path.join(
     __dirname,
     "../../database/tempEngagementScores.json"
 );
 
+const VIEWS_FILE_PATH = path.join(
+    __dirname,
+    "../../database/tempViewScores.json"
+);
+
+/**
+ * Flush engagement + view deltas to Firestore
+ */
 const flushEngagements = async () => {
-    const raw = fs.readFileSync(FILE_PATH, "utf-8");
-    if (!raw) return;
+    try {
+        const batch = db.batch();
 
-    const data = JSON.parse(raw);
-    const keys = Object.keys(data);
+        /* ------------------ ENGAGEMENT ------------------ */
+        if (fs.existsSync(ENGAGEMENT_FILE_PATH)) {
+            const rawEngagement = fs.readFileSync(ENGAGEMENT_FILE_PATH, "utf-8");
+            const engagementData = rawEngagement ? JSON.parse(rawEngagement) : {};
 
-    if (keys.length === 0) return;
+            for (const key of Object.keys(engagementData)) {
+                const { count, type } = engagementData[key];
+                if (!count) continue;
 
-    const batch = db.batch();
+                const id = key.split("_")[1];
 
-    for (const key of keys) {
-        const { count, type } = data[key];
-        const id = key.split("_")[1];
+                const ref =
+                    type === "post"
+                        ? db.collection("posts").doc(id)
+                        : db.collection("events").doc(id);
 
-       try{
-           const ref =
-               type === "post"
-                   ? db.collection("posts").doc(id)
-                   : db.collection("events").doc(id);
+                batch.update(ref, {
+                    engagementScore: FieldValue.increment(count),
+                });
+            }
+        }
 
-           batch.update(ref, {
-               engagementScore: db.FieldValue.increment(count),
-           });
-       }catch (e) {
-           console.error(e.message);
-       }
+        /* --------------------- VIEWS -------------------- */
+        if (fs.existsSync(VIEWS_FILE_PATH)) {
+            const rawViews = fs.readFileSync(VIEWS_FILE_PATH, "utf-8");
+            const viewsData = rawViews ? JSON.parse(rawViews) : {};
+
+            for (const key of Object.keys(viewsData)) {
+                const { count, type } = viewsData[key];
+                if (!count) continue;
+
+                const id = key.split("_")[1];
+
+                const ref =
+                    type === "post"
+                        ? db.collection("posts").doc(id)
+                        : db.collection("events").doc(id);
+
+                batch.update(ref, {
+                    viewCount: FieldValue.increment(count),
+                });
+            }
+        }
+
+        await batch.commit();
+
+        // Clear temp files after successful flush
+        fs.writeFileSync(ENGAGEMENT_FILE_PATH, "{}");
+        fs.writeFileSync(VIEWS_FILE_PATH, "{}");
+
+        console.log("Engagements & views flushed successfully");
+    } catch (err) {
+        console.error("Failed to flush engagement/view data:", err.message);
     }
-
-    await batch.commit();
-
-    // clear file after flush
-    fs.writeFileSync(FILE_PATH, "{}");
-
-    console.log("Engagements flushed successfully");
 };
 
 module.exports = flushEngagements;
