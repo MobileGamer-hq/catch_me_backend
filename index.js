@@ -1,8 +1,19 @@
 require("dotenv").config();
+const cors = require("cors");
 const app = require("./app");
 const {watchPosts, watchEvents, watchGames} = require("./methods/listenerMethods");
 
 const PORT = process.env.PORT || 5000;
+
+app.use(cors({
+    origin: [
+        "https://app.catchme.live",
+        "http://localhost:3000",
+        "http://localhost:5000"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
 
 app.use("/api/users", require("./routes/userRoutes"));
 app.use('/api/events', require("./routes/eventRoutes"));
