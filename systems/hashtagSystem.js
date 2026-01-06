@@ -1,0 +1,3 @@
+class HashtagSystem {
+    constructor() {}
+}

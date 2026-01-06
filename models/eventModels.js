@@ -1,6 +1,7 @@
 const gameDataModel = {
     // --- Core Metadata ---
     id: "", // string
+    userId: "", // string (ID of the user who created the game)
     type: "", // string (e.g., "game")
     sport: "", // string
     title: "", // string
@@ -10,6 +11,13 @@ const gameDataModel = {
     isTeamGame: false, // boolean
     createdAt: "", // string (Timestamp)
     Database_location: "", // string
+    
+    // --- Engagement Metrics ---
+    engagementScore: 0, // number (Calculated engagement score)
+    viewCount: 0, // number (Total views)
+    velocity: 0, // number (Engagement velocity)
+    tags: [], // array (Tags for categorization)
+
 
     // --- Game Time & Status ---
     date: "", // string (Date of the game)

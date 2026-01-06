@@ -1,4 +1,5 @@
-//
+//TO DO
+-Create route for organizing game data at the end of the game, organizing means cleaning up events, distibutng stats from game players to the players who's id exist then notifiying them.
 
 
 //

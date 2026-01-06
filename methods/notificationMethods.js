@@ -38,4 +38,34 @@ const notifyFollowers = async (type = 'post', userId, id) => {
     }
 };
 
+const generateNotification = (type= 'post', userId, id, title) => {
+    const notif = {
+        id: `${userId}-${Date.now()}-notification-${type}`,
+        recipientId: userId ,
+        senderId: '',
+        title: title ,
+        body: { type, fromUser: userId },
+        sentAt: Date.now(),
+        link: type === 'game' ? LinkUtils.generateGameLink(id) : LinkUtils.generatePostLink(id),
+    };
+
+    return notif;
+}
+
+const sendNotification = async ( userId, data) => {
+    // Add notification using arrayUnion
+    try{
+        await db
+            .collection("users")
+            .doc(userId)
+            .update({
+                notifications: admin.firestore.FieldValue.arrayUnion(data)
+            });
+
+    }catch(err){
+        console.error("Couldn't Add Notificatio! ${err.message}");
+    }
+    console.log(`Notification ${data.id} sent to ${userId}`);
+}
+
 module.exports = { notifyFollowers };

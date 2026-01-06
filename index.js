@@ -3,6 +3,9 @@ const cors = require("cors");
 const app = require("./app");
 const {watchPosts, watchEvents, watchGames} = require("./methods/listenerMethods");
 
+// ✅ START CRON JOBS (Critical fix: this was missing!)
+require("./cron");
+
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
