@@ -57,6 +57,9 @@ class FeedSystem {
             const posts = await this.fetchCandidatePosts();
             const games = await this.fetchCandidateGames();
 
+            console.log(`posts: ${posts.length}`)
+            console.log(`games: ${games.length}`)
+
             // Score all content
             const scoredPosts = await this.scoreContent(posts, 'post');
             const scoredGames = await this.scoreContent(games, 'game');
@@ -100,6 +103,8 @@ class FeedSystem {
         
         let allPosts = new Map();
 
+
+
         try {
             // 1. Posts from followed users (chunked to handle >10 limit)
             if (following.length > 0) {
@@ -120,6 +125,7 @@ class FeedSystem {
 
             // 2. Posts by interested sports (chunked)
             const allSports = [...new Set([...interestedSports, ...favoriteSports])];
+                    
             if (allSports.length > 0) {
                 const sportsChunks = this.chunkArray(allSports, 10);
                 for (const chunk of sportsChunks) {
@@ -136,18 +142,21 @@ class FeedSystem {
                 }
             }
 
+
             // 3. Trending posts (fallback)
-            const trendingSnapshot = await Firestore.firestore()
-                .collection("posts")
-                .where("engagementScore", ">", 0)
-                .orderBy("engagementScore", "desc")
-                .orderBy("createdAt", "desc")
-                .limit(50)
-                .get();
+            // const trendingSnapshot = await Firestore.firestore()
+            //     .collection("posts")
+            //     .where("engagementScore", ">", 0)
+            //     .orderBy("engagementScore", "desc")
+            //     .orderBy("createdAt", "desc")
+            //     .limit(50)
+            //     .get();
             
-            trendingSnapshot.forEach(doc => {
-                allPosts.set(doc.id, { id: doc.id, ...doc.data() });
-            });
+            // trendingSnapshot.forEach(doc => {
+            //     allPosts.set(doc.id, { id: doc.id, ...doc.data() });
+            // });
+
+                       
 
             // 4. Recent posts (for new users with no interests)
             if (allPosts.size < 20) {
@@ -161,6 +170,8 @@ class FeedSystem {
                     allPosts.set(doc.id, { id: doc.id, ...doc.data() });
                 });
             }
+            console.log(allPosts)
+  
 
             return Array.from(allPosts.values());
 
@@ -535,7 +546,7 @@ class FeedSystem {
                 highlights.push(post.id);
             } else if (type === 'image' || type === 'image-post') {
                 images.push(post.id);
-            } else if (type === 'thought') {
+            } else if (type === 'thoughts') {
                 thoughts.push(post.id);
             } else {
                 // Default to images for unknown types
