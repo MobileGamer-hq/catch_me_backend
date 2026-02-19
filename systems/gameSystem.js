@@ -1,3 +1,0 @@
-class GameSystem {
-    constructor(game) {}
-}
