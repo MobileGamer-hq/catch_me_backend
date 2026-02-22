@@ -1,0 +1,3 @@
+class GameSystem {
+    constructor(game) {}
+}
