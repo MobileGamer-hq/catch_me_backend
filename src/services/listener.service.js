@@ -1,5 +1,6 @@
 const { db } = require("../config/firebase");
 const { notifyFollowers } = require("./notification.service");
+const gameFinalizationService = require("./gameFinalization.service");
 
 /* ────────────────────────────────────────────────
    Watch NEW POSTS
@@ -98,6 +99,22 @@ function watchGames() {
             game.userId || game.createdBy, // adjust to your field name
             game.id,
           );
+        }
+
+        if (change.type === "modified") {
+          const game = change.doc.data();
+          const status = game.currentState?.status;
+
+          // If the game just finished, run the finalization engine
+          if (status === "completed" || status === "finished") {
+            // Only finalize if it hasn't been finalized yet (check if summary or stats exist)
+            if (!game.summary) {
+              console.log(
+                `[Listener] Game ${change.doc.id} completed. Triggering finalization...`,
+              );
+              await gameFinalizationService.finalizeGame(change.doc.id);
+            }
+          }
         }
       }
     });

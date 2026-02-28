@@ -22,6 +22,9 @@ app.get("/ping", (req, res) => {
   res.send("Pong!");
 });
 
+const leaderboardRoutes = require("./routes/leaderboardRoutes");
+
 app.use("/api/users", userRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 
 module.exports = app;
