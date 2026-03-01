@@ -1,13 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const {  getUser, deleteUser, searchUsers, getUsers } = require("../controllers/userController");
-const {getEventsByType, getAllEvents, getEventById, deleteEvent} = require("../controllers/eventController");
+const {
+  getGames,
+  getGame,
+  endGame,
+  standardizeGame,
+} = require("../controllers/gameController");
 
-//User
-router.get("/", getAllEvents); // get all users
-router.get("/:id", getEventById); //
-router.delete('/:id', deleteEvent ); // -- not correct work on the whole file
-
-
+// Games
+router.get("/", getGames);
+router.get("/:id", getGame);
+router.post("/:id/standardize", standardizeGame);
+router.post("/:id/end", endGame);
 
 module.exports = router;
