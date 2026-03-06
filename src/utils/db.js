@@ -29,7 +29,7 @@ class Firestore {
       const chunk = ids.slice(i, i + 30);
       const snapshot = await db
         .collection(collectionName)
-        .where("uid", "in", chunk)
+        .where("id", "in", chunk)
         .get();
       snapshot.forEach((doc) => results.push({ id: doc.id, ...doc.data() }));
     }

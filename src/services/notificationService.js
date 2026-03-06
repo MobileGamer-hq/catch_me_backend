@@ -8,8 +8,13 @@ const { Realtime, Firestore } = require("../utils/db");
  */
 async function getTokensFromUserIds(userIds) {
   if (!userIds || userIds.length === 0) return [];
+  console.log("Getting Users Tokens");
 
   const users = await Firestore.getByIds("users", userIds);
+  console.log(users);
+  for (const user in users) {
+    console.log(`${user.id}-${user.fcmToken}`);
+  }
   return users.map((user) => user.fcmToken).filter((token) => !!token);
 }
 
