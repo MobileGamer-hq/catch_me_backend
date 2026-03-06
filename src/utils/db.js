@@ -14,6 +14,7 @@ class Firestore {
 
   // Get a single document by ID
   static async getById(collectionName, id) {
+    if (!id || typeof id !== "string") return null;
     const docRef = db.collection(collectionName).doc(id);
     const doc = await docRef.get();
     if (!doc.exists) return null;

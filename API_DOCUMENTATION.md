@@ -1,8 +1,8 @@
 # Catch Me API Documentation
 
-This document outlines the available API endpoints for the Catch Me backend, including the required request bodies and response formats.
+This document outlines the available API endpoints and background jobs for the Catch Me backend.
 
-- **Base URL**: `https://app.catchme.live/api` (Production) or `http://localhost:5000/api` (Local)
+- **Base URL**: `https://api.catchme.live/` or `https://api2.catchme.live/` (Production) or `http://localhost:5000/api` (Local)
 - **Format**: All requests and responses use JSON.
 
 ---
@@ -14,165 +14,148 @@ This document outlines the available API endpoints for the Catch Me backend, inc
 - **Method**: `GET`
 - **Endpoint**: `/`
 - **Description**: Returns a list of all users from Firestore.
-- **Response**: `200 OK`
-  ```json
-  [
-    { "id": "user123", "name": "John Doe", "email": "john@example.com", ... },
-    ...
-  ]
-  ```
 
 ### Get User by ID
 
 - **Method**: `GET`
 - **Endpoint**: `/:id`
 - **Description**: Returns the details of a specific user.
-- **Response**: `200 OK`
-  ```json
-  { "id": "user123", "name": "John Doe", "email": "john@example.com", ... }
-  ```
-- **Errors**: `404 Not Found` if the user doesn't exist.
+
+### Delete User
+
+- **Method**: `DELETE`
+- **Endpoint**: `/:id`
+- **Description**: Deletes a specific user by ID.
 
 ### Search Users
 
 - **Method**: `GET`
 - **Endpoint**: `/search?q={query}`
-- **Description**: Searches for users by name (prefix match).
-- **Response**: `200 OK`
-  ```json
-  [
-    { "id": "user123", "name": "John Doe", ... }
-  ]
-  ```
+- **Description**: Searches for users by name (prefix match) or email.
 
 ### Get User Suggestions
 
 - **Method**: `GET`
 - **Endpoint**: `/:id/suggestions`
-- **Description**: Returns "You May Know" user recommendations for the given user ID.
-- **Response**: `200 OK`
-  ```json
-  [
-    { "id": "user456", "name": "Jane Smith", ... }
-  ]
-  ```
+- **Description**: Returns "You May Know" user recommendations for a given user ID.
 
 ---
 
-## 2. Events & Games (`/api/events`)
+## 2. Events (`/api/events`)
 
 ### Get All Events
 
 - **Method**: `GET`
 - **Endpoint**: `/`
-- **Description**: Returns a list of all events/games.
-- **Response**: `200 OK`
-  ```json
-  [
-    { "id": "event123", "type": "game", "title": "Friday Match", ... },
-    ...
-  ]
-  ```
+- **Description**: Returns a list of all events.
 
 ### Get Event by ID
 
 - **Method**: `GET`
 - **Endpoint**: `/:id`
-- **Description**: Returns details for a specific event or game.
-- **Response**: `200 OK`
-  ```json
-  { "id": "event123", "type": "game", "title": "Friday Match", ... }
-  ```
-
-### Update Event
-
-- **Method**: `PUT` (Mapped via `app.use`)
-- **Endpoint**: `/:id`
-- **Description**: Updates fields of an existing event.
-- **Request Body**:
-  ```json
-  {
-    "title": "Updated Title",
-    "description": "New description..."
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  { "message": "Event updated successfully" }
-  ```
+- **Description**: Returns details for a specific event.
 
 ### Delete Event
 
 - **Method**: `DELETE`
 - **Endpoint**: `/:id`
 - **Description**: Deletes an event by ID.
-- **Response**: `200 OK`
-  ```json
-  { "message": "Event deleted successfully" }
-  ```
+
+### Get Events by Type
+
+- **Method**: `GET`
+- **Endpoint**: `/:type`
+- **Description**: Retrieves events filtered by their type parameter.
 
 ---
 
-## 3. Feed (`/api/feed`)
+## 3. Games (`/api/games`)
+
+### Get All Games
+
+- **Method**: `GET`
+- **Endpoint**: `/`
+- **Description**: Retrieves a list of all games.
+
+### Get Game by ID
+
+- **Method**: `GET`
+- **Endpoint**: `/:id`
+- **Description**: Retrieves details of a specific game.
+
+### Standardize Game
+
+- **Method**: `POST`
+- **Endpoint**: `/:id/standardize`
+- **Description**: Standardizes a specific game's data.
+
+### End Game
+
+- **Method**: `POST`
+- **Endpoint**: `/:id/end`
+- **Description**: Ends a specific game session.
+
+---
+
+## 4. Notifications (`/api/notifications`)
+
+### Send Notification
+
+- **Method**: `POST`
+- **Endpoint**: `/send`
+- **Description**: Sends a push notification or in-app event. Accepts target tokens, user IDs, or a `sendToAll` flag.
+
+### Send Notification to All Users
+
+- **Method**: `POST`
+- **Endpoint**: `/send-all`
+- **Description**: Explicit endpoint to send a push notification to all users across the app automatically.
+
+---
+
+## 5. Feed (`/api/feed`)
 
 ### Get User Feed
 
 - **Method**: `GET`
 - **Endpoint**: `/:id`
-- **Description**: Generates a personalized feed (posts and games) for a specific user.
-- **Response**: `200 OK`
-  ```json
-  [
-    { "id": "post1", "type": "post", "content": "Hello world", ... },
-    { "id": "game1", "type": "game", "title": "Big Game", ... }
-  ]
-  ```
+- **Description**: Generates a personalized feed (posts, games, events) for a specific user ID based on recommendations and engagements.
 
 ---
 
-## 4. Engagement (`/api/engage`)
+## 6. Engagement (`/api/engage`)
 
 ### Record Engagement Signal
 
 - **Method**: `POST`
 - **Endpoint**: `/signal`
-- **Description**: Records user engagement (dwell time or clicks) for a post or game.
-- **Request Body**:
-  ```json
-  {
-    "type": "dwell" | "click",
-    "targetId": "post_or_game_id",
-    "targetType": "post" | "game",
-    "value": 5000 // (optional) milliseconds for dwell time
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  { "success": true }
-  ```
+- **Description**: Records user engagement (dwell time, clicks, views, likes, comments, etc.) for a post or game.
 
 ---
 
-## 5. Leaderboard (`/api/leaderboard`)
+## 7. Leaderboard (`/api/leaderboard`)
 
 ### Get Rankings
 
 - **Method**: `GET`
-- **Endpoint**: `/?role=athlete&country=Nigeria&limit=50&page=1`
-- **Description**: Returns a ranked list of users based on various filters.
-- **Query Parameters**:
-  - `role`: (string) Filter by user role (e.g., `athlete`, `scout`).
-  - `country`: (string) Filter by country.
-  - `region`: (string) Filter by region.
-  - `location`: (string) Filter by city/location.
-  - `sport`: (string) Filter by sport type.
-  - `limit`: (number) Results per page (default: 50).
-  - `page`: (number) Page number (default: 1).
-- **Response**: `200 OK`
-  ```json
-  {
-    "rankings": [...],
-    "page": 1,
-    "limit": 50
-  }
-  ```
+- **Endpoint**: `/`
+- **Description**: Returns a ranked list of users, filterable by query parameters (`role`, `country`, `region`, `location`, `sport`, `limit`, `page`).
+
+---
+
+## 8. Background Jobs & Scheduled Tasks
+
+The backend runs multiple background operations to maintain system health, engagement tracking, and user recommendations.
+
+- **Engagement Flusher (`flushEngagements.js`)**:
+  - **Schedule**: Every 30 minutes.
+  - **Description**: Flushes temporary in-memory engagement/view data into Firestore. Recalculates weighted engagement scores for posts based on views, likes, comments, shares, and saves.
+- **Tag Sync (`tagSync.js`)**:
+  - **Schedule**: Daily at midnight.
+  - **Description**: Synchronizes tag data systematically across the platform.
+- **Compute Similarity (`computeSimilarity.js`)**:
+  - **Schedule**: Batch / Nightly job.
+  - **Description**: Collaborative filtering task that runs iteratively over users to compute Jaccard Similiary index based on intersecting `likedPosts` helping to fuel recommendations.
+- **Calculate Velocity (`calculateVelocity.js`)**:
+  - **Schedule**: Batch / Periodic job.
+  - **Description**: Analyzes posts from the last 48 hours to determine engagement velocity (change in score per hour). Helpful for identifying trending content.

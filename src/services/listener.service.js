@@ -18,25 +18,36 @@ function watchPosts() {
     for (const change of snapshot.docChanges()) {
       if (change.type === "added") {
         const post = change.doc.data();
-        console.log("New Post:", post.id);
+        const postId = change.doc.id;
+        const userId = post.userId || post.authorId || post.createdBy;
+
+        console.log("New Post detected:", postId, "by user:", userId);
+
+        if (!userId) {
+          console.warn(
+            `Post ${postId} has no valid userId. Skipping notification.`,
+          );
+          continue;
+        }
 
         // 1. Send Notifications
-        await notifyFollowers(
-          "post",
-          post.userId,
-          post.id, // use Firestore doc ID
-        );
+        await notifyFollowers("post", userId, postId);
 
         // 2. Hybrid Fan-out (Push to Feed)
         // Only push for authors with < 1000 followers to save writes
         try {
-          const authorDoc = await db.collection("users").doc(post.userId).get();
+          const authorDoc = await db.collection("users").doc(userId).get();
           const author = authorDoc.data();
 
-          // Default to 0 if field missing
-          const followerCount = author?.followers?.length || 0;
+          if (!author) {
+            console.warn(`Author ${userId} not found for post ${postId}`);
+            continue;
+          }
 
-          if (followerCount < 1000 && author?.followers) {
+          // Default to 0 if field missing
+          const followerCount = author.followers?.length || 0;
+
+          if (followerCount < 1000 && author.followers) {
             const batch = db.batch();
             let opCount = 0;
 
@@ -45,11 +56,11 @@ function watchPosts() {
                 .collection("users")
                 .doc(followerId)
                 .collection("feedItems")
-                .doc(post.id);
+                .doc(postId);
               batch.set(feedRef, {
-                postId: post.id,
-                authorId: post.userId,
-                createdAt: post.createdAt, // Ensure this exists or use FieldValue
+                postId: postId,
+                authorId: userId,
+                createdAt: post.createdAt || new Date().toISOString(),
                 type: "post",
               });
               opCount++;
@@ -57,13 +68,12 @@ function watchPosts() {
               if (opCount >= 450) {
                 await batch.commit();
                 opCount = 0;
-                // batch = db.batch(); // Re-instantiate if we were doing > 500, but simple logic for now
               }
             }
 
             if (opCount > 0) await batch.commit();
             console.log(
-              `Pushed post ${post.id} to ${author.followers.length} feeds.`,
+              `Pushed post ${postId} to ${author.followers.length} feeds.`,
             );
           }
         } catch (err) {
@@ -76,7 +86,7 @@ function watchPosts() {
 
 /* ────────────────────────────────────────────────
    Watch NEW GAMES
-────────────────────────────────────────────────── */
+ ────────────────────────────────────────────────── */
 function watchGames() {
   let isInitialLoad = true;
 
@@ -92,17 +102,24 @@ function watchGames() {
       for (const change of snapshot.docChanges()) {
         if (change.type === "added") {
           const game = change.doc.data();
-          console.log("New Game:", game.id);
+          const gameId = change.doc.id;
+          const userId = game.userId || game.createdBy || game.authorId;
 
-          await notifyFollowers(
-            "game",
-            game.userId || game.createdBy, // adjust to your field name
-            game.id,
-          );
+          console.log("New Game detected:", gameId, "by user:", userId);
+
+          if (!userId) {
+            console.warn(
+              `Game ${gameId} has no valid userId. Skipping notification.`,
+            );
+            continue;
+          }
+
+          await notifyFollowers("game", userId, gameId);
         }
 
         if (change.type === "modified") {
           const game = change.doc.data();
+          const gameId = change.doc.id;
           const status = game.currentState?.status;
 
           // If the game just finished, run the finalization engine
@@ -110,9 +127,9 @@ function watchGames() {
             // Only finalize if it hasn't been finalized yet (check if summary or stats exist)
             if (!game.summary) {
               console.log(
-                `[Listener] Game ${change.doc.id} completed. Triggering finalization...`,
+                `[Listener] Game ${gameId} completed. Triggering finalization...`,
               );
-              await gameFinalizationService.finalizeGame(change.doc.id);
+              await gameFinalizationService.finalizeGame(gameId);
             }
           }
         }
@@ -122,7 +139,7 @@ function watchGames() {
 
 /* ────────────────────────────────────────────────
    Watch NEW EVENTS
-────────────────────────────────────────────────── */
+ ────────────────────────────────────────────────── */
 function watchEvents() {
   let isInitialLoad = true;
 
@@ -136,9 +153,19 @@ function watchEvents() {
     for (const change of snapshot.docChanges()) {
       if (change.type === "added") {
         const event = change.doc.data();
-        console.log("New Event:", change.doc.id);
+        const eventId = change.doc.id;
+        const userId = event.userId || event.createdBy || event.authorId;
 
-        await notifyFollowers("events", event.userId || event.userId, event.id);
+        console.log("New Event detected:", eventId, "by user:", userId);
+
+        if (!userId) {
+          console.warn(
+            `Event ${eventId} has no valid userId. Skipping notification.`,
+          );
+          continue;
+        }
+
+        await notifyFollowers("events", userId, eventId);
       }
     }
   });

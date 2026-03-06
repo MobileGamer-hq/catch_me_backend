@@ -24,9 +24,11 @@ app.get("/ping", (req, res) => {
 
 const leaderboardRoutes = require("./routes/leaderboardRoutes");
 const gameRoutes = require("./routes/gameRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/games", gameRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 module.exports = app;

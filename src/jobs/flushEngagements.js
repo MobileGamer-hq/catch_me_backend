@@ -45,9 +45,13 @@ const flushEngagements = async () => {
             ? db.collection("posts").doc(id)
             : db.collection("events").doc(id);
 
-        batch.update(ref, {
-          engagementScore: FieldValue.increment(count),
-        });
+        batch.set(
+          ref,
+          {
+            engagementScore: FieldValue.increment(count),
+          },
+          { merge: true },
+        );
       }
     }
 
@@ -67,9 +71,13 @@ const flushEngagements = async () => {
             ? db.collection("posts").doc(id)
             : db.collection("events").doc(id);
 
-        batch.update(ref, {
-          viewCount: FieldValue.increment(count),
-        });
+        batch.set(
+          ref,
+          {
+            viewCount: FieldValue.increment(count),
+          },
+          { merge: true },
+        );
       }
     }
 
