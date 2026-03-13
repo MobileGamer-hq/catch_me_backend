@@ -119,7 +119,21 @@ This document outlines the available API endpoints and background jobs for the C
 
 - **Method**: `GET`
 - **Endpoint**: `/:id`
-- **Description**: Generates a personalized feed (posts, games, events) for a specific user ID based on recommendations and engagements.
+- **Description**: Generates a personalized summarized feed for a specific user ID based on recommendations and engagements.
+- **Query Parameters**:
+  - `filter` (optional): `all`, `followers`, `trending`, `suggested`. Defaults to `all`.
+- **Response Features**: Includes categorized `posts`, `games` (IDs), `suggestedUsers`, `upcomingGames` (IDs), and `popular` (categorized IDs).
+
+### Get Granular Feed Component
+
+- **Method**: `GET`
+- **Endpoint**: `/:id/:type/:subtype?`
+- **Description**: Retrieves a specific, granular component of the feed for a given user. Used to fetch individual segments of the feed (often as arrays of IDs for optimization). Can optionally take a subtype (e.g., `/popular/highlights`).
+- **Path Parameters**:
+  - `type`: The component to fetch. Supported values: `posts`, `highlights`, `images`, `thoughts`, `games`, `users`, `upcoming`, `popular`.
+  - `subtype` (optional): Further filters the type, specifically useful for `posts` or `popular` to get specific categories like `highlights`, `images`, or `thoughts`.
+- **Query Parameters**:
+  - `filter` (optional): `all`, `followers`, `trending`, `suggested`. Defaults to `all`.
 
 ---
 

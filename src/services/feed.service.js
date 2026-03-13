@@ -93,11 +93,16 @@ class FeedSystem {
       // Fetch recommended upcoming games for explore page
       const upcomingGames = await this.getRecommendedGames();
 
+      // Fetch popular content
+      const popularPosts = await this.fetchPopularContent();
+      const categorizedPopular = this.categorizePosts(popularPosts);
+
       return {
         posts: categorizedPosts,
         games: diverseGames.slice(0, 100).map((g) => g.id),
         suggestedUsers,
         upcomingGames: upcomingGames.map((g) => g.id),
+        popular: categorizedPopular,
       };
     } catch (error) {
       console.error("FeedSystem.generateFeed ERROR:", error);
@@ -254,6 +259,23 @@ class FeedSystem {
       return Array.from(allPosts.values());
     } catch (error) {
       console.error("fetchCandidatePosts ERROR:", error);
+      return [];
+    }
+  }
+
+  async fetchPopularContent() {
+    try {
+      const snapshot = await Firestore.firestore()
+        .collection("posts")
+        .orderBy("engagementScore", "desc")
+        .limit(30)
+        .get();
+
+      const posts = [];
+      snapshot.forEach((doc) => posts.push({ id: doc.id, ...doc.data() }));
+      return posts;
+    } catch (error) {
+      console.error("fetchPopularContent ERROR:", error);
       return [];
     }
   }
