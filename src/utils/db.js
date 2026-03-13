@@ -70,10 +70,32 @@ class Firestore {
 }
 
 class Realtime {
+  /**
+   * Recursively sanitizes keys for RTDB by replacing invalid characters (., #, $, /, [, ]) with underscores.
+   */
+  static sanitizeKeys(data) {
+    if (data === null || typeof data !== "object") return data;
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.sanitizeKeys(item));
+    }
+
+    const sanitized = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        // Replace invalid RTDB characters: . # $ / [ ]
+        const sanitizedKey = key.replace(/[\.\#\$\/\\[\]]/g, "_");
+        sanitized[sanitizedKey] = this.sanitizeKeys(data[key]);
+      }
+    }
+    return sanitized;
+  }
+
   // Set data at a reference (overwrite)
   static async set(refPath, data) {
     try {
-      await realtime.ref(refPath).set(data);
+      const sanitizedData = this.sanitizeKeys(data);
+      await realtime.ref(refPath).set(sanitizedData);
       console.log(`Data saved to ${refPath}`);
       return { refPath, set: true };
     } catch (e) {
@@ -84,14 +106,16 @@ class Realtime {
 
   // Push new data to a reference (adds a child)
   static async push(refPath, data) {
+    const sanitizedData = this.sanitizeKeys(data);
     const ref = realtime.ref(refPath).push();
-    await ref.set(data);
-    return { key: ref.key, ...data };
+    await ref.set(sanitizedData);
+    return { key: ref.key, ...sanitizedData };
   }
 
   // Update data at a reference
   static async update(refPath, data) {
-    await realtime.ref(refPath).update(data);
+    const sanitizedData = this.sanitizeKeys(data);
+    await realtime.ref(refPath).update(sanitizedData);
     return { refPath, updated: true };
   }
 

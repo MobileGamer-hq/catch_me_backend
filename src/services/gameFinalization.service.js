@@ -62,6 +62,9 @@ class GameFinalizationService {
         "currentState.status": "completed", // Ensure status is explicitly marked
       });
 
+      // 6. Propagate Stats to User Profiles
+      await this.propagateStatsToProfiles(gameId, gameData, teamStats, playerStats);
+
       console.log(`[GameFinalization] Game ${gameId} finalized successfully.`);
       return true;
     } catch (error) {
@@ -70,6 +73,60 @@ class GameFinalizationService {
         error,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Propagates calculated stats to user and team profiles.
+   */
+  async propagateStatsToProfiles(gameId, gameData, teamStats, playerStats) {
+    console.log(`[GameFinalization] Propagating stats for game: ${gameId}`);
+    try {
+      const batch = db.batch();
+
+      // 1. Update Player Profiles
+      for (const p of playerStats) {
+        if (!p.id) continue;
+        const userRef = db.collection("users").doc(p.id);
+
+        // Convert stats object to an array format if necessary, 
+        // or just update a specific stats field.
+        // Based on user requirements, we update the 'stats' array.
+        const userStatArray = Object.entries(p)
+          .filter(([key]) => key !== 'id' && key !== 'name')
+          .map(([key, value]) => ({ label: key.charAt(0).toUpperCase() + key.slice(1), value }));
+
+        batch.set(userRef, {
+          stats: userStatArray,
+          lastGameId: gameId,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      // 2. Update Team Profiles
+      const homeId = gameData.data?.homeTeam?.id;
+      const awayId = gameData.data?.awayTeam?.id;
+
+      if (homeId) {
+        const homeRef = db.collection("users").doc(homeId);
+        batch.set(homeRef, {
+          "roleData.performanceStats": teamStats.home,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      if (awayId) {
+        const awayRef = db.collection("users").doc(awayId);
+        batch.set(awayRef, {
+          "roleData.performanceStats": teamStats.away,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      await batch.commit();
+      console.log(`[GameFinalization] Stats propagated to ${playerStats.length} players and ${ (homeId ? 1 : 0) + (awayId ? 1 : 0) } teams.`);
+    } catch (error) {
+      console.error(`[GameFinalization] Error propagating stats:`, error);
     }
   }
 

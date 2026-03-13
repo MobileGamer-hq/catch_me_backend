@@ -52,14 +52,17 @@ class FeedSystem {
        MAIN FEED GENERATION
        ───────────────────────────────────────────────────────────── */
 
-  async generateFeed() {
+  async generateFeed(filter = "all") {
     try {
-      // Fetch candidate content
-      const posts = await this.fetchCandidatePosts();
-      const games = await this.fetchCandidateGames();
+      // Normalize filter
+      const activeFilter = (filter || "all").toLowerCase();
 
-      console.log(`posts: ${posts.length}`);
-      console.log(`games: ${games.length}`);
+      // Fetch candidate content
+      const posts = await this.fetchCandidatePosts(activeFilter);
+      const games = await this.fetchCandidateGames(activeFilter);
+
+      console.log(`posts: ${posts.length} (Filter: ${activeFilter})`);
+      console.log(`games: ${games.length} (Filter: ${activeFilter})`);
 
       // Score all content
       const scoredPosts = await this.scoreContent(posts, "post");
@@ -69,9 +72,13 @@ class FeedSystem {
       const qualityPosts = this.filterByQuality(scoredPosts);
       const qualityGames = this.filterByQuality(scoredGames);
 
-      // Apply diversity control
-      const diversePosts = this.applyDiversity(qualityPosts);
-      const diverseGames = this.applyDiversity(qualityGames);
+      // Apply diversity control (only for 'all' or 'suggested')
+      let diversePosts = qualityPosts;
+      if (activeFilter === "all" || activeFilter === "suggested") {
+        diversePosts = this.applyDiversity(qualityPosts);
+      }
+
+      const diverseGames = qualityGames;
 
       // Sort by final score
       diversePosts.sort((a, b) => b.finalScore - a.finalScore);
@@ -80,13 +87,17 @@ class FeedSystem {
       // Categorize posts by type
       const categorizedPosts = this.categorizePosts(diversePosts);
 
-      // Catch suggested users
+      // Fetch suggested users
       const suggestedUsers = await this.fetchSuggestedUsers();
+
+      // Fetch recommended upcoming games for explore page
+      const upcomingGames = await this.getRecommendedGames();
 
       return {
         posts: categorizedPosts,
         games: diverseGames.slice(0, 100).map((g) => g.id),
         suggestedUsers,
+        upcomingGames: upcomingGames.map((g) => g.id),
       };
     } catch (error) {
       console.error("FeedSystem.generateFeed ERROR:", error);
@@ -101,7 +112,7 @@ class FeedSystem {
        CONTENT FETCHING
        ───────────────────────────────────────────────────────────── */
 
-  async fetchCandidatePosts() {
+  async fetchCandidatePosts(filter = "all") {
     const following = this.user.following || [];
     const interestedSports = this.user.interestedSports || [];
     const favoriteSports = this.user.favoriteSports || [];
@@ -109,6 +120,55 @@ class FeedSystem {
     let allPosts = new Map();
 
     try {
+      // OPTION 1: Followers Only
+      if (filter === "followers") {
+        if (following.length > 0) {
+          const followingChunks = this.chunkArray(following, 10);
+          for (const chunk of followingChunks) {
+            const snapshot = await Firestore.firestore()
+              .collection("posts")
+              .where("userId", "in", chunk)
+              .orderBy("createdAt", "desc")
+              .limit(50)
+              .get();
+
+            snapshot.forEach((doc) => {
+              allPosts.set(doc.id, { id: doc.id, ...doc.data() });
+            });
+          }
+        }
+        return Array.from(allPosts.values());
+      }
+
+      // OPTION 2: Trending Only
+      if (filter === "trending") {
+        const trendingSnapshot = await Firestore.firestore()
+          .collection("posts")
+          .where("velocity", ">", 0)
+          .orderBy("velocity", "desc")
+          .limit(50)
+          .get();
+
+        trendingSnapshot.forEach((doc) => {
+          allPosts.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+
+        // Fallback to engagement score if velocity search is empty
+        if (allPosts.size < 10) {
+          const scoreSnapshot = await Firestore.firestore()
+            .collection("posts")
+            .orderBy("engagementScore", "desc")
+            .limit(50)
+            .get();
+
+          scoreSnapshot.forEach((doc) => {
+            allPosts.set(doc.id, { id: doc.id, ...doc.data() });
+          });
+        }
+        return Array.from(allPosts.values());
+      }
+
+      // OPTION 3: Suggested / All (Interleaved)
       // 1. Posts from followed users (chunked to handle >10 limit)
       if (following.length > 0) {
         const followingChunks = this.chunkArray(following, 10);
@@ -198,24 +258,44 @@ class FeedSystem {
     }
   }
 
-  async fetchCandidateGames() {
+  async fetchCandidateGames(filter = "all") {
     const following = this.user.following || [];
     const interestedSports = this.user.interestedSports || [];
     const favoriteSports = this.user.favoriteSports || [];
     const userTags = this.user.tags || [];
 
     try {
-      // Fetch recent games
-      const gamesSnapshot = await Firestore.firestore()
+      let gamesSnapshot;
+
+      if (filter === "followers" && following.length > 0) {
+        // Query games specifically by followed users
+        const followingChunks = this.chunkArray(following, 10);
+        const games = [];
+        for (const chunk of followingChunks) {
+          const snapshot = await Firestore.firestore()
+            .collection("events")
+            .where("type", "==", "game")
+            .where("userId", "in", chunk)
+            .orderBy("createdAt", "desc")
+            .limit(30)
+            .get();
+          snapshot.forEach((doc) => games.push({ id: doc.id, ...doc.data() }));
+        }
+        return games;
+      }
+
+      // Default: Fetch recent games
+      // We remove the strict orderBy if not all games have createdAt
+      gamesSnapshot = await Firestore.firestore()
         .collection("events")
         .where("type", "==", "game")
-        .orderBy("createdAt", "desc")
         .limit(150)
         .get();
 
       const games = [];
       gamesSnapshot.forEach((doc) => {
         const game = { id: doc.id, ...doc.data() };
+        // ... rest of filtering logic ...
 
         // Filter logic
         const gameUserId = game.userId || this.getBaseId(game.id);
@@ -255,9 +335,49 @@ class FeedSystem {
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-       SCORING SYSTEM (Concepts #1-8)
-       ───────────────────────────────────────────────────────────── */
+  /**
+   * Fetch recommendations for "Upcoming Games" (Explore Page)
+   */
+  async getRecommendedGames() {
+    try {
+      const favoriteSports = this.user.favoriteSports || [];
+      const interestedSports = this.user.interestedSports || [];
+      const allSports = [...new Set([...favoriteSports, ...interestedSports])];
+
+      let query = Firestore.firestore()
+        .collection("events")
+        .where("type", "==", "game")
+        .limit(50); // Fetch more and filter in-memory if status/date are missing
+
+      const snapshot = await query.get();
+      let games = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        // If status is present, it must be scheduled. If missing, assume it's valid for now.
+        const status = data.currentState?.status || "scheduled";
+        if (status === "scheduled") {
+          games.push({ id: doc.id, ...data });
+        }
+      });
+
+      // Simple scoring: prioritize user's sports
+      return games
+        .map((game) => {
+          const sport = (game.sport || game.data?.sport || "").toLowerCase();
+          let score = 0;
+          if (favoriteSports.includes(sport)) score += 10;
+          if (interestedSports.includes(sport)) score += 5;
+          return { ...game, recommendationScore: score };
+        })
+        .sort((a, b) => b.recommendationScore - a.recommendationScore)
+        .slice(0, 10);
+    } catch (error) {
+      console.error("getRecommendedGames ERROR:", error);
+      return [];
+    }
+  }
+
+  /* ───────────── HELPERS ───────────── */
 
   async scoreContent(items, contentType) {
     const scoredItems = [];
