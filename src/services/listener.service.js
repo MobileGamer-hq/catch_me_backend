@@ -2,6 +2,30 @@ const { db } = require("../config/firebase");
 const { notifyFollowers } = require("./notification.service");
 const gameFinalizationService = require("./gameFinalization.service");
 
+/**
+ * Distributed lock to prevent multiple instances from running the same logic twice.
+ */
+async function runWithLock(lockId, callback) {
+  const lockRef = db.collection("system_locks").doc(lockId);
+  try {
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(lockRef);
+      if (doc.exists) {
+        throw new Error("ALREADY_LOCKED");
+      }
+      t.set(lockRef, { lockedAt: new Date().toISOString() });
+    });
+    // We obtained the lock
+    await callback();
+  } catch (err) {
+    if (err.message !== "ALREADY_LOCKED") {
+      console.error(`[Lock] Error running with lock ${lockId}:`, err);
+    } else {
+      console.log(`[Lock] Skipping ${lockId}, already processed.`);
+    }
+  }
+}
+
 /* ────────────────────────────────────────────────
    Watch NEW POSTS
 ────────────────────────────────────────────────── */
@@ -30,55 +54,57 @@ function watchPosts() {
           continue;
         }
 
-        // 1. Send Notifications
-        await notifyFollowers("post", userId, postId);
+        await runWithLock(`post_${postId}`, async () => {
+          // 1. Send Notifications
+          await notifyFollowers("post", userId, postId);
 
-        // 2. Hybrid Fan-out (Push to Feed)
-        // Only push for authors with < 1000 followers to save writes
-        try {
-          const authorDoc = await db.collection("users").doc(userId).get();
-          const author = authorDoc.data();
+          // 2. Hybrid Fan-out (Push to Feed)
+          // Only push for authors with < 1000 followers to save writes
+          try {
+            const authorDoc = await db.collection("users").doc(userId).get();
+            const author = authorDoc.data();
 
-          if (!author) {
-            console.warn(`Author ${userId} not found for post ${postId}`);
-            continue;
-          }
-
-          // Default to 0 if field missing
-          const followerCount = author.followers?.length || 0;
-
-          if (followerCount < 1000 && author.followers) {
-            const batch = db.batch();
-            let opCount = 0;
-
-            for (const followerId of author.followers) {
-              const feedRef = db
-                .collection("users")
-                .doc(followerId)
-                .collection("feedItems")
-                .doc(postId);
-              batch.set(feedRef, {
-                postId: postId,
-                authorId: userId,
-                createdAt: post.createdAt || new Date().toISOString(),
-                type: "post",
-              });
-              opCount++;
-
-              if (opCount >= 450) {
-                await batch.commit();
-                opCount = 0;
-              }
+            if (!author) {
+              console.warn(`Author ${userId} not found for post ${postId}`);
+              return;
             }
 
-            if (opCount > 0) await batch.commit();
-            console.log(
-              `Pushed post ${postId} to ${author.followers.length} feeds.`,
-            );
+            // Default to 0 if field missing
+            const followerCount = author.followers?.length || 0;
+
+            if (followerCount < 1000 && author.followers) {
+              const batch = db.batch();
+              let opCount = 0;
+
+              for (const followerId of author.followers) {
+                const feedRef = db
+                  .collection("users")
+                  .doc(followerId)
+                  .collection("feedItems")
+                  .doc(postId);
+                batch.set(feedRef, {
+                  postId: postId,
+                  authorId: userId,
+                  createdAt: post.createdAt || new Date().toISOString(),
+                  type: "post",
+                });
+                opCount++;
+
+                if (opCount >= 450) {
+                  await batch.commit();
+                  opCount = 0;
+                }
+              }
+
+              if (opCount > 0) await batch.commit();
+              console.log(
+                `Pushed post ${postId} to ${author.followers.length} feeds.`,
+              );
+            }
+          } catch (err) {
+            console.error("Fan-out failed:", err);
           }
-        } catch (err) {
-          console.error("Fan-out failed:", err);
-        }
+        });
       }
     }
   });
@@ -114,7 +140,9 @@ function watchGames() {
             continue;
           }
 
-          await notifyFollowers("game", userId, gameId);
+          await runWithLock(`game_${gameId}`, async () => {
+            await notifyFollowers("game", userId, gameId);
+          });
         }
 
         if (change.type === "modified") {
@@ -129,7 +157,9 @@ function watchGames() {
               console.log(
                 `[Listener] Game ${gameId} completed. Triggering finalization...`,
               );
-              await gameFinalizationService.finalizeGame(gameId);
+              await runWithLock(`finalize_game_${gameId}`, async () => {
+                await gameFinalizationService.finalizeGame(gameId);
+              });
             }
           }
         }
@@ -165,7 +195,9 @@ function watchEvents() {
           continue;
         }
 
-        await notifyFollowers("events", userId, eventId);
+        await runWithLock(`event_${eventId}`, async () => {
+          await notifyFollowers("events", userId, eventId);
+        });
       }
     }
   });
