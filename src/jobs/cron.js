@@ -3,6 +3,8 @@ const flushEngagements = require("./flushEngagements");
 const tagSync = require("./tagSync");
 const cleanupNotifications = require("./cleanupNotifications");
 const syncMinUsers = require("./syncMinUsers");
+const syncMinPosts = require("./syncMinPosts");
+const syncMinGames = require("./syncMinGames");
 
 // Flush engagement data every 30 minutes
 cron.schedule("*/30 * * * *", async () => {
@@ -26,4 +28,16 @@ cron.schedule("0 12 * * *", async () => {
 cron.schedule("0 3 * * *", async () => {
   console.log("Starting daily minified user sync...");
   await syncMinUsers();
+});
+
+// Sync minified posts daily at 4 AM
+cron.schedule("0 4 * * *", async () => {
+  console.log("Starting daily minified post sync...");
+  await syncMinPosts();
+});
+
+// Sync minified games daily at 5 AM
+cron.schedule("0 5 * * *", async () => {
+  console.log("Starting daily minified game sync...");
+  await syncMinGames();
 });
