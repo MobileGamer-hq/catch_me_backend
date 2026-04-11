@@ -24,6 +24,8 @@ const syncMinGames = async () => {
         userId: game.userId || "",
         sport: game.sport || game.data?.sport || "",
         title: game.title || "",
+        date: game.date || game.data?.date || null,
+        location: game.location || game.data?.location || "",
         tags: Array.isArray(game.tags) ? game.tags : (typeof game.tags === "string" ? game.tags.split(",").map(t => t.trim()) : 
               (Array.isArray(game.data?.tags) ? game.data.tags : (typeof game.data?.tags === "string" ? game.data.tags.split(",").map(t => t.trim()) : []))),
         type: "game"
