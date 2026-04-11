@@ -48,54 +48,97 @@ const deleteUser = async (req, res) => {
 
     // 1. Cleanup in 'users' collection
     // Remove from followers, following, and blockedUsers of others
-    const followersSnapshot = await db.collection("users").where("followers", "array-contains", id).get();
-    const followingSnapshot = await db.collection("users").where("following", "array-contains", id).get();
-    const blockedSnapshot = await db.collection("users").where("blockedUsers", "array-contains", id).get();
+    const followersSnapshot = await db
+      .collection("users")
+      .where("followers", "array-contains", id)
+      .get();
+    const followingSnapshot = await db
+      .collection("users")
+      .where("following", "array-contains", id)
+      .get();
+    const blockedSnapshot = await db
+      .collection("users")
+      .where("blockedUsers", "array-contains", id)
+      .get();
 
-    followersSnapshot.forEach(doc => {
-      batch.update(doc.ref, { followers: admin.firestore.FieldValue.arrayRemove(id) });
+    followersSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        followers: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
-    followingSnapshot.forEach(doc => {
-      batch.update(doc.ref, { following: admin.firestore.FieldValue.arrayRemove(id) });
+    followingSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        following: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
-    blockedSnapshot.forEach(doc => {
-      batch.update(doc.ref, { blockedUsers: admin.firestore.FieldValue.arrayRemove(id) });
+    blockedSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        blockedUsers: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
 
     // 2. Cleanup in 'posts' collection
     // Remove from likes, shares, and saves of all posts
-    const likedPostsSnapshot = await db.collection("posts").where("likes", "array-contains", id).get();
-    const sharedPostsSnapshot = await db.collection("posts").where("shares", "array-contains", id).get();
-    const savedPostsSnapshot = await db.collection("posts").where("saves", "array-contains", id).get();
+    const likedPostsSnapshot = await db
+      .collection("posts")
+      .where("likes", "array-contains", id)
+      .get();
+    const sharedPostsSnapshot = await db
+      .collection("posts")
+      .where("shares", "array-contains", id)
+      .get();
+    const savedPostsSnapshot = await db
+      .collection("posts")
+      .where("saves", "array-contains", id)
+      .get();
 
-    likedPostsSnapshot.forEach(doc => {
-      batch.update(doc.ref, { likes: admin.firestore.FieldValue.arrayRemove(id) });
+    likedPostsSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        likes: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
-    sharedPostsSnapshot.forEach(doc => {
-      batch.update(doc.ref, { shares: admin.firestore.FieldValue.arrayRemove(id) });
+    sharedPostsSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        shares: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
-    savedPostsSnapshot.forEach(doc => {
-      batch.update(doc.ref, { saves: admin.firestore.FieldValue.arrayRemove(id) });
+    savedPostsSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        saves: admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
 
     // 3. Delete user's own posts
-    const userPostsSnapshot = await db.collection("posts").where("userId", "==", id).get();
-    userPostsSnapshot.forEach(doc => {
+    const userPostsSnapshot = await db
+      .collection("posts")
+      .where("userId", "==", id)
+      .get();
+    userPostsSnapshot.forEach((doc) => {
       batch.delete(doc.ref);
     });
 
     // 4. Cleanup in 'events' collection
     // Remove from data.players and data.votes.userVotes
-    const eventsWithPlayerSnapshot = await db.collection("events").where("data.players", "array-contains", id).get();
-    eventsWithPlayerSnapshot.forEach(doc => {
-      batch.update(doc.ref, { "data.players": admin.firestore.FieldValue.arrayRemove(id) });
+    const eventsWithPlayerSnapshot = await db
+      .collection("events")
+      .where("data.players", "array-contains", id)
+      .get();
+    eventsWithPlayerSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        "data.players": admin.firestore.FieldValue.arrayRemove(id),
+      });
     });
 
     // Note: data.votes.userVotes is a map { userId: vote }. Removing from a map is different.
     // We can use FieldValue.delete() but we need to know the specific path.
-    const eventsWithVotesSnapshot = await db.collection("events").where(`data.votes.userVotes.${id}`, "!=", "").get();
-    eventsWithVotesSnapshot.forEach(doc => {
-      batch.update(doc.ref, { [`data.votes.userVotes.${id}`]: admin.firestore.FieldValue.delete() });
+    const eventsWithVotesSnapshot = await db
+      .collection("events")
+      .where(`data.votes.userVotes.${id}`, "!=", "")
+      .get();
+    eventsWithVotesSnapshot.forEach((doc) => {
+      batch.update(doc.ref, {
+        [`data.votes.userVotes.${id}`]: admin.firestore.FieldValue.delete(),
+      });
     });
 
     // 5. Delete the user document itself
@@ -103,10 +146,14 @@ const deleteUser = async (req, res) => {
 
     await batch.commit();
 
-    res.status(200).json({ message: "User and all their traces deleted successfully" });
+    res
+      .status(200)
+      .json({ message: "User and all their traces deleted successfully" });
   } catch (err) {
     console.error("Error in deleteUser:", err);
-    res.status(500).json({ error: "Failed to delete user", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to delete user", details: err.message });
   }
 };
 
@@ -163,7 +210,9 @@ const localSearchUsers = async (req, res) => {
     const filePath = path.join(__dirname, "..", "data", "users_min.json");
 
     if (!fs.existsSync(filePath)) {
-      return res.status(503).json({ error: "Search index not ready. Please try again later." });
+      return res
+        .status(503)
+        .json({ error: "Search index not ready. Please try again later." });
     }
 
     const fileData = fs.readFileSync(filePath, "utf8");
@@ -171,7 +220,7 @@ const localSearchUsers = async (req, res) => {
 
     // Convert map to array for Fuse.js
     // We only take the 'data' field which contains the minified info
-    const usersArray = Object.values(minUsersMap).map(u => u.data);
+    const usersArray = Object.values(minUsersMap).map((u) => u.data);
 
     const fuseOptions = {
       keys: ["name", "username"],
@@ -184,7 +233,7 @@ const localSearchUsers = async (req, res) => {
     const results = fuse.search(query);
 
     // Filter to return only the 'item' (minified user data)
-    const finalResults = results.map(r => r.item);
+    const finalResults = results.map((r) => r.item);
 
     res.status(200).json(finalResults);
   } catch (err) {
@@ -193,11 +242,11 @@ const localSearchUsers = async (req, res) => {
   }
 };
 
-module.exports = { 
-  getUsers, 
-  getUser, 
-  deleteUser, 
-  searchUsers, 
-  getSuggestions, 
-  localSearchUsers 
+module.exports = {
+  getUsers,
+  getUser,
+  deleteUser,
+  searchUsers,
+  getSuggestions,
+  localSearchUsers,
 };
