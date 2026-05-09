@@ -5,6 +5,13 @@ const cleanupNotifications = require("./cleanupNotifications");
 const syncMinUsers = require("./syncMinUsers");
 const syncMinPosts = require("./syncMinPosts");
 const syncMinGames = require("./syncMinGames");
+const calculateXPJob = require("./calculateXP");
+
+// Calculate XP daily at 1 AM
+cron.schedule("0 1 * * *", async () => {
+  console.log("Starting daily XP calculation...");
+  await calculateXPJob();
+});
 
 // Flush engagement data every 30 minutes
 cron.schedule("*/30 * * * *", async () => {
