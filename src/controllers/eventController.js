@@ -1,4 +1,4 @@
-const { db } = require("../config/firebase");
+const { db, admin } = require("../config/firebase");
 const Fuse = require("fuse.js");
 const fs = require("fs");
 const path = require("path");
@@ -25,13 +25,51 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// Delete Event
+/**
+ * Delete an event and remove all its traces from users (events, games, feed, etc.).
+ * DELETE /api/events/:id
+ */
 const deleteEvent = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const eventId = req.params.id;
-    await eventsCollection.doc(eventId).delete();
-    res.status(200).json({ message: "Event deleted successfully" });
+    // 1. Check if event exists
+    const eventRef = eventsCollection.doc(id);
+    const doc = await eventRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    const batch = db.batch();
+
+    // 2. Cleanup in 'users' collection
+    // We remove the eventId from various arrays in user documents
+    const arraysToCleanup = [
+      "events",
+      "games",
+      "myCustomEvents",
+      "myGames",
+      "feed.events",
+      "feed.games"
+    ];
+
+    for (const field of arraysToCleanup) {
+      const snapshot = await db.collection("users").where(field, "array-contains", id).get();
+      snapshot.forEach(userDoc => {
+        batch.update(userDoc.ref, {
+          [field]: admin.firestore.FieldValue.arrayRemove(id)
+        });
+      });
+    }
+
+    // 3. Delete the event itself
+    batch.delete(eventRef);
+
+    await batch.commit();
+
+    res.status(200).json({ message: "Event and its traces deleted successfully" });
   } catch (error) {
+    console.error("Error deleting event:", error);
     res
       .status(500)
       .json({ error: "Failed to delete event", details: error.message });

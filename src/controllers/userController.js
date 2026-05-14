@@ -141,7 +141,17 @@ const deleteUser = async (req, res) => {
       });
     });
 
-    // 5. Delete the user document itself
+    // 5. Cleanup in 'chats' collection
+    // Delete all chats the user was part of
+    const chatsSnapshot = await db
+      .collection("chats")
+      .where("members", "array-contains", id)
+      .get();
+    chatsSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // 6. Delete the user document itself
     batch.delete(db.collection("users").doc(id));
 
     await batch.commit();
