@@ -1,6 +1,7 @@
 const { Firestore } = require("../utils/db");
 const standardizationService = require("../services/standardization.service");
 const { db } = require("../config/firebase");
+const pdfService = require("../services/pdf.service");
 
 /**
  * Fetches all games (events with type 'game')
@@ -118,4 +119,37 @@ const endGame = async (req, res) => {
   }
 };
 
-module.exports = { getGames, getGame, endGame, standardizeGame };
+const exportGamePdfLink = async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    // Return the link that streams the PDF
+    const downloadUrl = `${req.protocol}://${req.get("host")}/api/games/${gameId}/download`;
+    res.status(200).json({ downloadUrl });
+  } catch (error) {
+    console.error("Error exporting PDF link:", error);
+    res.status(500).json({ error: "Failed to generate download link" });
+  }
+};
+
+const downloadGamePdf = async (req, res) => {
+  try {
+    const game = await Firestore.getById("events", req.params.id);
+    if (!game || game.type !== "game") {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    const pdfBuffer = await pdfService.generateGamePdf(game);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=game_${game.id}.pdf`
+    );
+    res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error("Error generating PDF:", err);
+    res.status(500).json({ error: "Failed to generate PDF" });
+  }
+};
+
+module.exports = { getGames, getGame, endGame, standardizeGame, exportGamePdfLink, downloadGamePdf };
