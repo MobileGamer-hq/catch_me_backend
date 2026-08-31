@@ -28,13 +28,13 @@ const localSearchPosts = async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
     const filePath = path.join(__dirname, "..", "data", "posts_min.json");
 
     if (!fs.existsSync(filePath)) {
-      return res.status(503).json({ error: "Search index not ready. Please try again later." });
+      return res.status(503).json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
 
     const fileData = fs.readFileSync(filePath, "utf8");
@@ -55,10 +55,10 @@ const localSearchPosts = async (req, res) => {
 
     const finalResults = results.map(r => r.item);
 
-    res.status(200).json(finalResults);
+    res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {
     console.error("Local post search error:", err);
-    res.status(500).json({ error: "Local search failed" });
+    res.status(500).json({ status: "FAILED", error: "Local search failed" });
   }
 };
 

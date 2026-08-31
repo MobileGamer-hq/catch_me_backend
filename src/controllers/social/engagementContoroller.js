@@ -39,7 +39,7 @@ const increaseEngagement = async (req, res) => {
         const { id } = req.params;
 
         if (!type || !id || !viewerId || !ownerId) {
-            return res.status(400).json({ error: "Missing fields" });
+            return res.status(400).json({ status: "FAILED", error: "Missing fields" });
         }
 
         const key = `${type}_${id}`;
@@ -71,12 +71,13 @@ const increaseEngagement = async (req, res) => {
         }
 
         res.status(200).json({
+            status: "SUCCESS",
             message: "View tracked",
             engagementTracked: viewerId !== ownerId,
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to track engagement/view" });
+        res.status(500).json({ status: "FAILED", error: "Failed to track engagement/view" });
     }
 };
 
@@ -90,20 +91,21 @@ const getEngagementById = async (req, res) => {
         const { type } = req.query;
 
         if (!type || !id) {
-            return res.status(400).json({ error: "Missing type or id" });
+            return res.status(400).json({ status: "FAILED", error: "Missing type or id" });
         }
 
         const data = readTempFile(ENGAGEMENT_FILE_PATH);
         const key = `${type}_${id}`;
 
         res.status(200).json({
+            status: "SUCCESS",
             id,
             type,
             count: data[key]?.count || 0,
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to fetch engagement" });
+        res.status(500).json({ status: "FAILED", error: "Failed to fetch engagement" });
     }
 };
 
@@ -115,12 +117,13 @@ const getAllEngagements = async (req, res) => {
         const data = readTempFile(ENGAGEMENT_FILE_PATH);
 
         res.status(200).json({
+            status: "SUCCESS",
             totalItems: Object.keys(data).length,
             engagements: data,
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to fetch engagements" });
+        res.status(500).json({ status: "FAILED", error: "Failed to fetch engagements" });
     }
 };
 

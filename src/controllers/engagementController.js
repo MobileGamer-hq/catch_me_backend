@@ -12,7 +12,7 @@ const recordSignal = async (req, res) => {
     const userId = req.user?.uid; // Assuming auth middleware populates this
 
     if (!targetId || !type) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ status: "FAILED", error: "Missing required fields" });
     }
 
     const collectionName = targetType === "game" ? "events" : "posts";
@@ -46,10 +46,10 @@ const recordSignal = async (req, res) => {
     //     timestamp: FieldValue.serverTimestamp()
     // });
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ status: "SUCCESS", message: "Signal recorded successfully" });
   } catch (error) {
     console.error("Signal Error:", error);
-    res.status(500).json({ error: "Failed to record signal" });
+    res.status(500).json({ status: "FAILED", error: "Failed to record signal" });
   }
 };
 

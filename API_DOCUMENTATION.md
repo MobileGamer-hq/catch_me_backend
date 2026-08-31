@@ -3,7 +3,7 @@
 This document outlines the available API endpoints and background jobs for the Catch Me backend.
 
 - **Base URL**: `https://api.catchme.live/` or `https://api2.catchme.live/` (Production) or `http://localhost:5000/api` (Local)
-- **Format**: All requests and responses use JSON.
+- **Format**: All requests and responses use JSON. Every response standardizes on a `status` field: `"SUCCESS"` for 2xx/3xx responses or `"FAILED"` for 4xx/5xx error responses.
 
 ---
 

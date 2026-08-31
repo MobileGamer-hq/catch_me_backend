@@ -16,7 +16,7 @@ async function sendNotification(req, res) {
       !sendToAll
     ) {
       return res.status(400).json({
-        success: false,
+        status: "FAILED",
         message:
           "At least one recipient (token, tokens, userIds, or sendToAll) is required.",
       });
@@ -25,14 +25,14 @@ async function sendNotification(req, res) {
     const messageId = await notificationService.sendPushNotification(payload);
 
     return res.status(200).json({
-      success: true,
+      status: "SUCCESS",
       message: "Notification sent successfully.",
       messageId: messageId,
     });
   } catch (error) {
     console.error("Controller Error:", error);
     return res.status(500).json({
-      success: false,
+      status: "FAILED",
       message: "Failed to send notification.",
       error: error.message,
     });
@@ -50,14 +50,14 @@ async function sendNotificationToAll(req, res) {
     const messageId = await notificationService.sendPushNotification(payload);
 
     return res.status(200).json({
-      success: true,
+      status: "SUCCESS",
       message: "Notification sent to all users successfully.",
       messageId: messageId,
     });
   } catch (error) {
     console.error("Controller Error:", error);
     return res.status(500).json({
-      success: false,
+      status: "FAILED",
       message: "Failed to send notification to all users.",
       error: error.message,
     });

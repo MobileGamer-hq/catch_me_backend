@@ -13,15 +13,15 @@ const updateEvent = async (req, res) => {
     const doc = await eventRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ error: "Event not found" });
+      return res.status(404).json({ status: "FAILED", error: "Event not found" });
     }
 
     await eventRef.update(req.body);
-    res.status(200).json({ message: "Event updated successfully" });
+    res.status(200).json({ status: "SUCCESS", message: "Event updated successfully" });
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Failed to update event", details: error.message });
+      .json({ status: "FAILED", error: "Failed to update event", details: error.message });
   }
 };
 
@@ -37,7 +37,7 @@ const deleteEvent = async (req, res) => {
     const eventRef = eventsCollection.doc(id);
     const doc = await eventRef.get();
     if (!doc.exists) {
-      return res.status(404).json({ error: "Event not found" });
+      return res.status(404).json({ status: "FAILED", error: "Event not found" });
     }
 
     const batch = db.batch();
@@ -67,12 +67,12 @@ const deleteEvent = async (req, res) => {
 
     await batch.commit();
 
-    res.status(200).json({ message: "Event and its traces deleted successfully" });
+    res.status(200).json({ status: "SUCCESS", message: "Event and its traces deleted successfully" });
   } catch (error) {
     console.error("Error deleting event:", error);
     res
       .status(500)
-      .json({ error: "Failed to delete event", details: error.message });
+      .json({ status: "FAILED", error: "Failed to delete event", details: error.message });
   }
 };
 
@@ -81,13 +81,13 @@ const getEventById = async (req, res) => {
   try {
     const doc = await eventsCollection.doc(req.params.id).get();
     if (!doc.exists) {
-      return res.status(404).json({ error: "Event not found" });
+      return res.status(404).json({ status: "FAILED", error: "Event not found" });
     }
-    res.status(200).json(doc.data());
+    res.status(200).json({ status: "SUCCESS", ...doc.data() });
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Failed to get event", details: error.message });
+      .json({ status: "FAILED", error: "Failed to get event", details: error.message });
   }
 };
 
@@ -96,11 +96,11 @@ const getAllEvents = async (_req, res) => {
   try {
     const snapshot = await eventsCollection.get();
     const events = snapshot.docs.map((doc) => doc.data());
-    res.status(200).json(events);
+    res.status(200).json({ status: "SUCCESS", data: events });
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Failed to get events", details: error.message });
+      .json({ status: "FAILED", error: "Failed to get events", details: error.message });
   }
 };
 
@@ -111,11 +111,11 @@ const getEventsByUserId = async (req, res) => {
       .where("userId", "==", req.params.userId)
       .get();
     const events = snapshot.docs.map((doc) => doc.data());
-    res.status(200).json(events);
+    res.status(200).json({ status: "SUCCESS", data: events });
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Failed to get user events", details: error.message });
+      .json({ status: "FAILED", error: "Failed to get user events", details: error.message });
   }
 };
 
@@ -126,11 +126,11 @@ const getEventsByType = async (req, res) => {
       .where("type", "==", req.params.type)
       .get();
     const events = snapshot.docs.map((doc) => doc.data());
-    res.status(200).json(events);
+    res.status(200).json({ status: "SUCCESS", data: events });
   } catch (error) {
     res
       .status(500)
-      .json({ error: "Failed to get events by type", details: error.message });
+      .json({ status: "FAILED", error: "Failed to get events by type", details: error.message });
   }
 };
 
@@ -143,13 +143,13 @@ const localSearchGames = async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
     const filePath = path.join(__dirname, "..", "data", "games_min.json");
 
     if (!fs.existsSync(filePath)) {
-      return res.status(503).json({ error: "Search index not ready. Please try again later." });
+      return res.status(503).json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
 
     const fileData = fs.readFileSync(filePath, "utf8");
@@ -170,10 +170,10 @@ const localSearchGames = async (req, res) => {
 
     const finalResults = results.map(r => r.item);
 
-    res.status(200).json(finalResults);
+    res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {
     console.error("Local game search error:", err);
-    res.status(500).json({ error: "Local search failed" });
+    res.status(500).json({ status: "FAILED", error: "Local search failed" });
   }
 };
 

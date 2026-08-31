@@ -15,15 +15,16 @@ app.use(
   }),
 );
 app.use(express.json()); // Parses JSON body
+app.use(require("./middleware/responseFormatter"));
 app.use(require("./middleware/sessionContext"));
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Catch Me Backend");
+  res.json({ message: "Catch Me Backend" });
 });
 
 app.get("/ping", (req, res) => {
-  res.send("Pong!");
+  res.json({ message: "Pong!" });
 });
 
 // Import Routes
@@ -47,5 +48,18 @@ app.use("/api/events", eventRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/engage", engagementRoutes);
+
+// 404 Catch-All
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// Global Error Handler
+app.use((err, req, res, _next) => {
+  console.error("Unhandled Error:", err);
+  res.status(err.status || 500).json({
+    error: err.message || "Internal server error",
+  });
+});
 
 module.exports = app;

@@ -23,10 +23,10 @@ const getLeaderboard = async (req, res) => {
       parsedPage,
     );
 
-    res.status(200).json(rankings);
+    res.status(200).json({ status: "SUCCESS", ...rankings });
   } catch (err) {
     console.error("Leaderboard Error:", err);
-    res.status(500).json({ error: "Failed to fetch leaderboard" });
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch leaderboard" });
   }
 };
 

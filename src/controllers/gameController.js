@@ -14,12 +14,12 @@ const getGames = async (req, res) => {
       .where("type", "==", "game")
       .get();
     const games = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    res.status(200).json(games);
+    res.status(200).json({ status: "SUCCESS", data: games });
   } catch (error) {
     console.error("Error fetching games:", error);
     res
       .status(500)
-      .json({ error: "Failed to fetch games", details: error.message });
+      .json({ status: "FAILED", error: "Failed to fetch games", details: error.message });
   }
 };
 
@@ -31,13 +31,13 @@ const getGame = async (req, res) => {
     const game = await Firestore.getById("events", req.params.id);
 
     if (!game || game.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
-    res.status(200).json(game);
+    res.status(200).json({ status: "SUCCESS", ...game });
   } catch (err) {
     console.error("Error fetching game:", err);
-    res.status(500).json({ error: "Failed to fetch game" });
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch game" });
   }
 };
 
@@ -50,7 +50,7 @@ const standardizeGame = async (req, res) => {
     const gameDoc = await Firestore.getById("events", gameId);
 
     if (!gameDoc || gameDoc.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
     // Extract fields
@@ -60,6 +60,7 @@ const standardizeGame = async (req, res) => {
       return res
         .status(400)
         .json({
+          status: "FAILED",
           error:
             "Game document is missing required 'data' or 'currentState' fields",
         });
@@ -82,6 +83,7 @@ const standardizeGame = async (req, res) => {
     const updatedGame = await Firestore.updateById("events", gameId, updates);
 
     res.status(200).json({
+      status: "SUCCESS",
       message: "Game standardized successfully",
       game: updatedGame,
     });
@@ -89,7 +91,7 @@ const standardizeGame = async (req, res) => {
     console.error("Error standardizing game:", error);
     res
       .status(500)
-      .json({ error: "Failed to standardize game", details: error.message });
+      .json({ status: "FAILED", error: "Failed to standardize game", details: error.message });
   }
 };
 
@@ -98,7 +100,7 @@ const endGame = async (req, res) => {
     const game = await Firestore.getById("events", req.params.id);
 
     if (!game || game.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
     // Simple status update for now
@@ -113,10 +115,10 @@ const endGame = async (req, res) => {
       updates,
     );
 
-    res.status(200).json(updatedGame);
+    res.status(200).json({ status: "SUCCESS", ...updatedGame });
   } catch (err) {
     console.error("Error ending game:", err);
-    res.status(500).json({ error: "Failed to end game" });
+    res.status(500).json({ status: "FAILED", error: "Failed to end game" });
   }
 };
 
@@ -125,10 +127,10 @@ const exportGamePdfLink = async (req, res) => {
     const gameId = req.params.id;
     // Return the link that streams the PDF
     const downloadUrl = `${req.protocol}://${req.get("host")}/api/games/${gameId}/download`;
-    res.status(200).json({ downloadUrl });
+    res.status(200).json({ status: "SUCCESS", downloadUrl });
   } catch (error) {
     console.error("Error exporting PDF link:", error);
-    res.status(500).json({ error: "Failed to generate download link" });
+    res.status(500).json({ status: "FAILED", error: "Failed to generate download link" });
   }
 };
 
@@ -136,7 +138,7 @@ const downloadGamePdf = async (req, res) => {
   try {
     const game = await Firestore.getById("events", req.params.id);
     if (!game || game.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
     const pdfBuffer = await pdfService.generateGamePdf(game);
@@ -149,7 +151,7 @@ const downloadGamePdf = async (req, res) => {
     res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error("Error generating PDF:", err);
-    res.status(500).json({ error: "Failed to generate PDF" });
+    res.status(500).json({ status: "FAILED", error: "Failed to generate PDF" });
   }
 };
 
@@ -163,13 +165,13 @@ const createSummary = async (req, res) => {
     const snapshot = await summaryRef.once("value");
 
     if (snapshot.exists()) {
-      return res.status(200).json(snapshot.val());
+      return res.status(200).json({ status: "SUCCESS", ...snapshot.val() });
     }
 
     // Fetch the game data from Firestore
     const gameDoc = await Firestore.getById("events", id);
     if (!gameDoc || gameDoc.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
     // Generate summary
@@ -182,10 +184,10 @@ const createSummary = async (req, res) => {
 
     await summaryRef.set(summaryData);
 
-    res.status(201).json(summaryData);
+    res.status(201).json({ status: "SUCCESS", ...summaryData });
   } catch (error) {
     console.error("Error creating game summary:", error);
-    res.status(500).json({ error: "Failed to create game summary", details: error.message });
+    res.status(500).json({ status: "FAILED", error: "Failed to create game summary", details: error.message });
   }
 };
 
@@ -199,7 +201,7 @@ const updateSummary = async (req, res) => {
     const snapshot = await summaryRef.once("value");
 
     if (!snapshot.exists()) {
-      return res.status(404).json({ error: "Summary not found. Please create one first." });
+      return res.status(404).json({ status: "FAILED", error: "Summary not found. Please create one first." });
     }
 
     const currentSummary = snapshot.val();
@@ -207,6 +209,7 @@ const updateSummary = async (req, res) => {
 
     if (Date.now() - currentSummary.updatedAt < tenMinutes) {
       return res.status(400).json({ 
+        status: "FAILED",
         message: "Summary was updated recently. Please wait before updating again.",
         summary: currentSummary 
       });
@@ -215,7 +218,7 @@ const updateSummary = async (req, res) => {
     // Fetch the game data from Firestore
     const gameDoc = await Firestore.getById("events", id);
     if (!gameDoc || gameDoc.type !== "game") {
-      return res.status(404).json({ error: "Game not found" });
+      return res.status(404).json({ status: "FAILED", error: "Game not found" });
     }
 
     // Generate new summary
@@ -228,10 +231,10 @@ const updateSummary = async (req, res) => {
 
     await summaryRef.update(updatedData);
 
-    res.status(200).json(updatedData);
+    res.status(200).json({ status: "SUCCESS", ...updatedData });
   } catch (error) {
     console.error("Error updating game summary:", error);
-    res.status(500).json({ error: "Failed to update game summary", details: error.message });
+    res.status(500).json({ status: "FAILED", error: "Failed to update game summary", details: error.message });
   }
 };
 
@@ -244,10 +247,10 @@ const deleteSummary = async (req, res) => {
     const summaryRef = realtime.ref(`game_summaries/${id}`);
     await summaryRef.remove();
     
-    res.status(200).json({ message: "Game summary deleted successfully" });
+    res.status(200).json({ status: "SUCCESS", message: "Game summary deleted successfully" });
   } catch (error) {
     console.error("Error deleting game summary:", error);
-    res.status(500).json({ error: "Failed to delete game summary", details: error.message });
+    res.status(500).json({ status: "FAILED", error: "Failed to delete game summary", details: error.message });
   }
 };
 

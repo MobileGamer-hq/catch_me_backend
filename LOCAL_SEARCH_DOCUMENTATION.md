@@ -22,15 +22,18 @@ The system is designed to provide search results that are **Faster** than Firest
 
 **Expected Output**:
 ```json
-[
-  {
-    "id": "user_abc_123",
-    "username": "johndoe",
-    "name": "John Doe",
-    "profilePic": "https://...",
-    "role": "athlete"
-  }
-]
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "id": "user_abc_123",
+      "username": "johndoe",
+      "name": "John Doe",
+      "profilePic": "https://...",
+      "role": "athlete"
+    }
+  ]
+}
 ```
 
 ---
@@ -41,17 +44,20 @@ The system is designed to provide search results that are **Faster** than Firest
 
 **Expected Output**:
 ```json
-[
-  {
-    "id": "post_xyz_789",
-    "userId": "user_abc_123",
-    "type": "Highlight",
-    "caption": "Check out this goal!",
-    "tags": ["football", "skill", "goal"],
-    "pic": "https://...",
-    "name": "John Doe"
-  }
-]
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "id": "post_xyz_789",
+      "userId": "user_abc_123",
+      "type": "Highlight",
+      "caption": "Check out this goal!",
+      "tags": ["football", "skill", "goal"],
+      "pic": "https://...",
+      "name": "John Doe"
+    }
+  ]
+}
 ```
 
 ---
@@ -62,16 +68,19 @@ The system is designed to provide search results that are **Faster** than Firest
 
 **Expected Output**:
 ```json
-[
-  {
-    "id": "game_lmn_456",
-    "userId": "user_abc_123",
-    "sport": "Basketball",
-    "title": "Finals: Tigers vs Lions",
-    "tags": ["finals", "basketball"],
-    "type": "game"
-  }
-]
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "id": "game_lmn_456",
+      "userId": "user_abc_123",
+      "sport": "Basketball",
+      "title": "Finals: Tigers vs Lions",
+      "tags": ["finals", "basketball"],
+      "type": "game"
+    }
+  ]
+}
 ```
 
 ---

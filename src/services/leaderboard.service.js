@@ -68,7 +68,12 @@ class LeaderboardService {
 
     // Apply exact match filters
     if (filters.role) {
-      usersQuery = usersQuery.where("role", "==", filters.role);
+      const roleVariants = Array.from(new Set([
+        filters.role,
+        filters.role.toLowerCase(),
+        filters.role.charAt(0).toUpperCase() + filters.role.slice(1).toLowerCase(),
+      ]));
+      usersQuery = usersQuery.where("role", "in", roleVariants);
     }
     if (filters.country) {
       usersQuery = usersQuery.where("country", "==", filters.country);
@@ -100,14 +105,14 @@ class LeaderboardService {
       // Calculate score and add ID
       users.push({
         id: doc.id,
-        username: userData.username,
-        name: userData.name,
-        profilePic: userData.profilePic,
-        role: userData.role,
-        country: userData.country,
-        location: userData.location,
-        level: userData.level,
-        xp: userData.xp,
+        username: userData.username || "",
+        name: userData.name || "",
+        profilePic: userData.profilePic || "",
+        role: userData.role || "",
+        country: userData.country || "",
+        location: userData.location || "",
+        level: userData.level || 0,
+        xp: userData.xp || 0,
         score: this.calculateScore(userData),
       });
     });

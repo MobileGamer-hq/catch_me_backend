@@ -12,7 +12,7 @@ const deletePost = async (req, res) => {
     // 1. Check if post exists
     const post = await Firestore.getById("posts", id);
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      return res.status(404).json({ status: "FAILED", error: "Post not found" });
     }
 
     const { userId } = post;
@@ -49,10 +49,10 @@ const deletePost = async (req, res) => {
 
     await batch.commit();
 
-    res.status(200).json({ message: "Post and its traces deleted successfully" });
+    res.status(200).json({ status: "SUCCESS", message: "Post and its traces deleted successfully" });
   } catch (err) {
     console.error("Error deleting post:", err);
-    res.status(500).json({ error: "Failed to delete post", details: err.message });
+    res.status(500).json({ status: "FAILED", error: "Failed to delete post", details: err.message });
   }
 };
 

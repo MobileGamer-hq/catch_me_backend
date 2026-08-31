@@ -9,14 +9,14 @@ const searchAll = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim() === "") {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
     const results = await SearchService.globalSearch(q);
-    res.status(200).json(results);
+    res.status(200).json({ status: "SUCCESS", ...results });
   } catch (error) {
     console.error("[SearchController] Search error:", error);
-    res.status(500).json({ error: "Search failed", details: error.message });
+    res.status(500).json({ status: "FAILED", error: "Search failed", details: error.message });
   }
 };
 

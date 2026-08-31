@@ -9,10 +9,10 @@ const getUsers = async (req, res) => {
   try {
     const users = await Firestore.getAll("users");
 
-    res.status(200).json(users);
+    res.status(200).json({ status: "SUCCESS", data: users });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch users" });
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch users" });
   }
 };
 
@@ -21,13 +21,13 @@ const getUser = async (req, res) => {
     const user = await Firestore.getById("users", req.params.id);
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ status: "FAILED", error: "User not found" });
     }
 
-    res.status(200).json(user);
+    res.status(200).json({ status: "SUCCESS", ...user });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch user" });
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch user" });
   }
 };
 
@@ -41,7 +41,7 @@ const deleteUser = async (req, res) => {
   try {
     const user = await Firestore.getById("users", id);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ status: "FAILED", error: "User not found" });
     }
 
     const batch = db.batch();
@@ -158,12 +158,12 @@ const deleteUser = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "User and all their traces deleted successfully" });
+      .json({ status: "SUCCESS", message: "User and all their traces deleted successfully" });
   } catch (err) {
     console.error("Error in deleteUser:", err);
     res
       .status(500)
-      .json({ error: "Failed to delete user", details: err.message });
+      .json({ status: "FAILED", error: "Failed to delete user", details: err.message });
   }
 };
 
@@ -173,7 +173,7 @@ const searchUsers = async (req, res) => {
     const queryParam = req.query.q;
 
     if (!queryParam) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
     // Firestore doesn't support full text search; this is a basic prefix search
@@ -184,10 +184,10 @@ const searchUsers = async (req, res) => {
       .get();
 
     const results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    res.status(200).json(results);
+    res.status(200).json({ status: "SUCCESS", data: results });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Search failed" });
+    res.status(500).json({ status: "FAILED", error: "Search failed" });
   }
 };
 
@@ -198,10 +198,10 @@ const searchUsers = async (req, res) => {
 const getSuggestions = async (req, res) => {
   try {
     const suggestions = await GraphService.getYouMayKnow(req.params.id);
-    res.status(200).json(suggestions);
+    res.status(200).json({ status: "SUCCESS", data: suggestions });
   } catch (err) {
     console.error("Suggestions Error:", err);
-    res.status(500).json({ error: "Failed to get suggestions" });
+    res.status(500).json({ status: "FAILED", error: "Failed to get suggestions" });
   }
 };
 
@@ -214,7 +214,7 @@ const localSearchUsers = async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
+      return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
     const filePath = path.join(__dirname, "..", "data", "users_min.json");
@@ -222,7 +222,7 @@ const localSearchUsers = async (req, res) => {
     if (!fs.existsSync(filePath)) {
       return res
         .status(503)
-        .json({ error: "Search index not ready. Please try again later." });
+        .json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
 
     const fileData = fs.readFileSync(filePath, "utf8");
@@ -245,10 +245,10 @@ const localSearchUsers = async (req, res) => {
     // Filter to return only the 'item' (minified user data)
     const finalResults = results.map((r) => r.item);
 
-    res.status(200).json(finalResults);
+    res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {
     console.error("Local search error:", err);
-    res.status(500).json({ error: "Local search failed" });
+    res.status(500).json({ status: "FAILED", error: "Local search failed" });
   }
 };
 
