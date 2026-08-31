@@ -1,9 +1,7 @@
 const { Firestore } = require("../utils/db");
 const { db, admin } = require("../config/firebase");
 const { GraphService } = require("../services/graph.service");
-const Fuse = require("fuse.js");
-const fs = require("fs");
-const path = require("path");
+const localSearchService = require("../services/localSearch.service");
 
 const getUsers = async (req, res) => {
   try {
@@ -217,33 +215,13 @@ const localSearchUsers = async (req, res) => {
       return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
-    const filePath = path.join(__dirname, "..", "data", "users_min.json");
+    const finalResults = await localSearchService.searchUsers(query);
 
-    if (!fs.existsSync(filePath)) {
+    if (finalResults === null) {
       return res
         .status(503)
         .json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
-
-    const fileData = fs.readFileSync(filePath, "utf8");
-    const minUsersMap = JSON.parse(fileData);
-
-    // Convert map to array for Fuse.js
-    // We only take the 'data' field which contains the minified info
-    const usersArray = Object.values(minUsersMap).map((u) => u.data);
-
-    const fuseOptions = {
-      keys: ["name", "username"],
-      threshold: 0.4, // Adjust for fuzziness (0.0 is exact match, 1.0 is everything)
-      distance: 100,
-      minMatchCharLength: 2,
-    };
-
-    const fuse = new Fuse(usersArray, fuseOptions);
-    const results = fuse.search(query);
-
-    // Filter to return only the 'item' (minified user data)
-    const finalResults = results.map((r) => r.item);
 
     res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {

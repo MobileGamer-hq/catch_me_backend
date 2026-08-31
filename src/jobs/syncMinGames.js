@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { db } = require("../config/firebase");
+const localSearchService = require("../services/localSearch.service");
 
 /**
- * Daily job to sync minified game data from Firestore to a local JSON file.
+ * Daily job to sync minified game data from Firestore to a local JSON file and Redis.
  * Includes title, sport, and tags for fuzzy search.
  */
 const syncMinGames = async () => {
@@ -49,7 +50,10 @@ const syncMinGames = async () => {
     
     fs.writeFileSync(filePath, JSON.stringify(minifiedGames, null, 2), "utf8");
     
-    console.log(`Successfully synced ${snapshot.size} games to ${filePath}`);
+    // 4. Update Redis and reload in-memory search index
+    await localSearchService.reloadGames(minifiedGames);
+    
+    console.log(`Successfully synced ${snapshot.size} games to ${filePath} and Redis`);
     return true;
   } catch (error) {
     console.error("Error in syncMinGames job:", error);

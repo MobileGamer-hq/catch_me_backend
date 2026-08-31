@@ -1,84 +1,40 @@
-const fs = require("fs");
-const path = require("path");
+const { Cache } = require("../../utils/cache");
 
-const ENGAGEMENT_FILE_PATH = path.join(
-    __dirname,
-    "../../database/tempEngagementScores.json"
-);
-
-const VIEWS_FILE_PATH = path.join(
-    __dirname,
-    "../../database/tempViewScores.json"
-);
+const BUFFER_VIEWS_KEY = "buffer:views";
+const BUFFER_ENGAGEMENTS_KEY = "buffer:engagements";
 
 /**
- * Utility: read temp file safely
- */
-const readTempFile = (filePath) => {
-    if (!fs.existsSync(filePath)) {
-        return {};
-    }
-
-    const raw = fs.readFileSync(filePath, "utf-8");
-    return raw ? JSON.parse(raw) : {};
-};
-
-/**
- * Utility: write temp file
- */
-const writeTempFile = (filePath, data) => {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-};
-
-/**
- * Track views + engagement (cached locally)
+ * Track views + engagement (buffered in Redis)
  */
 const increaseEngagement = async (req, res) => {
-    try {
-        const { type, viewerId, ownerId } = req.body;
-        const { id } = req.params;
+  try {
+    const { type, viewerId, ownerId } = req.body;
+    const { id } = req.params;
 
-        if (!type || !id || !viewerId || !ownerId) {
-            return res.status(400).json({ status: "FAILED", error: "Missing fields" });
-        }
-
-        const key = `${type}_${id}`;
-
-        /* ------------------ VIEWS (always count) ------------------ */
-        const viewsData = readTempFile(VIEWS_FILE_PATH);
-
-        if (!viewsData[key]) {
-            viewsData[key] = { count: 0, type };
-        }
-
-        viewsData[key].count += 1;
-        writeTempFile(VIEWS_FILE_PATH, viewsData);
-
-        console.log("View cached");
-
-        /* ---------------- ENGAGEMENT (ignore self) ---------------- */
-        if (viewerId !== ownerId) {
-            const engagementData = readTempFile(ENGAGEMENT_FILE_PATH);
-
-            if (!engagementData[key]) {
-                engagementData[key] = { count: 0, type };
-            }
-
-            engagementData[key].count += 1;
-            writeTempFile(ENGAGEMENT_FILE_PATH, engagementData);
-
-            console.log("Engagement cached");
-        }
-
-        res.status(200).json({
-            status: "SUCCESS",
-            message: "View tracked",
-            engagementTracked: viewerId !== ownerId,
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "FAILED", error: "Failed to track engagement/view" });
+    if (!type || !id || !viewerId || !ownerId) {
+      return res.status(400).json({ status: "FAILED", error: "Missing fields" });
     }
+
+    const key = `${type}_${id}`;
+
+    /* ------------------ VIEWS (always count) ------------------ */
+    await Cache.hincrby(BUFFER_VIEWS_KEY, key, 1);
+
+    /* ---------------- ENGAGEMENT (ignore self) ---------------- */
+    const isEngagement = viewerId !== ownerId;
+    if (isEngagement) {
+      await Cache.hincrby(BUFFER_ENGAGEMENTS_KEY, key, 1);
+    }
+
+    res.status(200).json({
+      status: "SUCCESS",
+      message: "View tracked",
+      engagementTracked: isEngagement,
+    });
+  } catch (err) {
+    console.error("increaseEngagement ERROR:", err);
+    res.status(500).json({ status: "FAILED", error: "Failed to track engagement/view" });
+  }
 };
 
 /**
@@ -86,49 +42,59 @@ const increaseEngagement = async (req, res) => {
  * GET /engagement/:id?type=post
  */
 const getEngagementById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { type } = req.query;
+  try {
+    const { id } = req.params;
+    const { type } = req.query;
 
-        if (!type || !id) {
-            return res.status(400).json({ status: "FAILED", error: "Missing type or id" });
-        }
-
-        const data = readTempFile(ENGAGEMENT_FILE_PATH);
-        const key = `${type}_${id}`;
-
-        res.status(200).json({
-            status: "SUCCESS",
-            id,
-            type,
-            count: data[key]?.count || 0,
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "FAILED", error: "Failed to fetch engagement" });
+    if (!type || !id) {
+      return res.status(400).json({ status: "FAILED", error: "Missing type or id" });
     }
+
+    const key = `${type}_${id}`;
+    const rawVal = await Cache.hget(BUFFER_ENGAGEMENTS_KEY, key);
+
+    res.status(200).json({
+      status: "SUCCESS",
+      id,
+      type,
+      count: parseInt(rawVal, 10) || 0,
+    });
+  } catch (err) {
+    console.error("getEngagementById ERROR:", err);
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch engagement" });
+  }
 };
 
 /**
  * Get all cached engagement deltas
  */
 const getAllEngagements = async (req, res) => {
-    try {
-        const data = readTempFile(ENGAGEMENT_FILE_PATH);
+  try {
+    const data = await Cache.hgetall(BUFFER_ENGAGEMENTS_KEY);
+    const engagements = {};
 
-        res.status(200).json({
-            status: "SUCCESS",
-            totalItems: Object.keys(data).length,
-            engagements: data,
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "FAILED", error: "Failed to fetch engagements" });
+    for (const [key, val] of Object.entries(data)) {
+      const parts = key.split("_");
+      const type = parts[0];
+      engagements[key] = {
+        count: parseInt(val, 10) || 0,
+        type,
+      };
     }
+
+    res.status(200).json({
+      status: "SUCCESS",
+      totalItems: Object.keys(engagements).length,
+      engagements,
+    });
+  } catch (err) {
+    console.error("getAllEngagements ERROR:", err);
+    res.status(500).json({ status: "FAILED", error: "Failed to fetch engagements" });
+  }
 };
 
 module.exports = {
-    increaseEngagement,
-    getEngagementById,
-    getAllEngagements,
+  increaseEngagement,
+  getEngagementById,
+  getAllEngagements,
 };

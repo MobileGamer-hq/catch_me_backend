@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const admin = require("../config/firebase");
+const { Cache } = require("../utils/cache");
 
 const db = admin.db;
 const FieldValue = admin.admin.firestore.FieldValue;
@@ -9,7 +10,6 @@ const ENGAGEMENT_FILE_PATH = path.join(
   __dirname,
   "../database/tempEngagementScores.json",
 );
-
 const VIEWS_FILE_PATH = path.join(__dirname, "../database/tempViewScores.json");
 
 // Engagement weights (must match FeedSystem)
@@ -21,24 +21,33 @@ const ENGAGEMENT_WEIGHTS = {
   save: 5,
 };
 
+const BUFFER_VIEWS_KEY = "buffer:views";
+const BUFFER_ENGAGEMENTS_KEY = "buffer:engagements";
+
 /**
- * Flush engagement + view deltas to Firestore
+ * Flush engagement + view deltas from Redis hashes to Firestore
  * Also recalculates engagement scores based on current data
  */
 const flushEngagements = async () => {
   try {
     const batch = db.batch();
+    let pendingUpdates = 0;
 
-    /* ------------------ ENGAGEMENT ------------------ */
-    if (fs.existsSync(ENGAGEMENT_FILE_PATH)) {
-      const rawEngagement = fs.readFileSync(ENGAGEMENT_FILE_PATH, "utf-8");
-      const engagementData = rawEngagement ? JSON.parse(rawEngagement) : {};
+    /* ------------------ REDIS BUFFER: ENGAGEMENT ------------------ */
+    const rawEngagements = await Cache.hgetall(BUFFER_ENGAGEMENTS_KEY);
+    const engagementKeys = Object.keys(rawEngagements);
 
-      for (const key of Object.keys(engagementData)) {
-        const { count, type } = engagementData[key];
-        if (!count) continue;
+    if (engagementKeys.length > 0) {
+      // Clear Redis buffer for engagements
+      await Cache.del(BUFFER_ENGAGEMENTS_KEY);
 
-        const id = key.split("_")[1];
+      for (const key of engagementKeys) {
+        const count = parseInt(rawEngagements[key], 10);
+        if (!count || isNaN(count)) continue;
+
+        const parts = key.split("_");
+        const type = parts[0];
+        const id = parts.slice(1).join("_");
 
         const ref =
           type === "post"
@@ -52,19 +61,25 @@ const flushEngagements = async () => {
           },
           { merge: true },
         );
+        pendingUpdates++;
       }
     }
 
-    /* --------------------- VIEWS -------------------- */
-    if (fs.existsSync(VIEWS_FILE_PATH)) {
-      const rawViews = fs.readFileSync(VIEWS_FILE_PATH, "utf-8");
-      const viewsData = rawViews ? JSON.parse(rawViews) : {};
+    /* --------------------- REDIS BUFFER: VIEWS -------------------- */
+    const rawViews = await Cache.hgetall(BUFFER_VIEWS_KEY);
+    const viewKeys = Object.keys(rawViews);
 
-      for (const key of Object.keys(viewsData)) {
-        const { count, type } = viewsData[key];
-        if (!count) continue;
+    if (viewKeys.length > 0) {
+      // Clear Redis buffer for views
+      await Cache.del(BUFFER_VIEWS_KEY);
 
-        const id = key.split("_")[1];
+      for (const key of viewKeys) {
+        const count = parseInt(rawViews[key], 10);
+        if (!count || isNaN(count)) continue;
+
+        const parts = key.split("_");
+        const type = parts[0];
+        const id = parts.slice(1).join("_");
 
         const ref =
           type === "post"
@@ -78,16 +93,53 @@ const flushEngagements = async () => {
           },
           { merge: true },
         );
+        pendingUpdates++;
       }
     }
 
-    await batch.commit();
+    /* --------------------- LEGACY DISK FILES (MIGRATION FALLBACK) -------------------- */
+    if (fs.existsSync(ENGAGEMENT_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(ENGAGEMENT_FILE_PATH, "utf-8");
+        const fileData = raw ? JSON.parse(raw) : {};
+        for (const key of Object.keys(fileData)) {
+          const { count, type } = fileData[key];
+          if (!count) continue;
+          const id = key.split("_").slice(1).join("_");
+          const ref = type === "post" ? db.collection("posts").doc(id) : db.collection("events").doc(id);
+          batch.set(ref, { engagementScore: FieldValue.increment(count) }, { merge: true });
+          pendingUpdates++;
+        }
+        fs.writeFileSync(ENGAGEMENT_FILE_PATH, "{}");
+      } catch (e) {
+        console.warn("Legacy engagement file read failed:", e.message);
+      }
+    }
 
-    // Clear temp files after successful flush
-    fs.writeFileSync(ENGAGEMENT_FILE_PATH, "{}");
-    fs.writeFileSync(VIEWS_FILE_PATH, "{}");
+    if (fs.existsSync(VIEWS_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(VIEWS_FILE_PATH, "utf-8");
+        const fileData = raw ? JSON.parse(raw) : {};
+        for (const key of Object.keys(fileData)) {
+          const { count, type } = fileData[key];
+          if (!count) continue;
+          const id = key.split("_").slice(1).join("_");
+          const ref = type === "post" ? db.collection("posts").doc(id) : db.collection("events").doc(id);
+          batch.set(ref, { viewCount: FieldValue.increment(count) }, { merge: true });
+          pendingUpdates++;
+        }
+        fs.writeFileSync(VIEWS_FILE_PATH, "{}");
+      } catch (e) {
+        console.warn("Legacy view file read failed:", e.message);
+      }
+    }
 
-    console.log("✅ Engagements & views flushed successfully");
+    if (pendingUpdates > 0) {
+      await batch.commit();
+      console.log(`✅ Flushed ${pendingUpdates} engagement & view updates to Firestore`);
+    } else {
+      console.log("ℹ️ No pending engagements or views to flush");
+    }
 
     // Recalculate engagement scores for recently updated posts
     await recalculateEngagementScores();

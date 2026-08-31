@@ -1,12 +1,23 @@
 const { Firestore } = require("../utils/db");
+const { Cache } = require("../utils/cache");
 
 class GraphService {
   /**
    * Find "You May Know" users based on mutual connections
    * Logic: Users followed by people I follow, excluding people I already follow.
+   * Cached in Redis with 1-hour TTL.
    */
   static async getYouMayKnow(userId, limit = 10) {
     try {
+      const cacheKey = `suggestions:${userId}:${limit}`;
+
+      // 1. Check Redis Cache
+      const cached = await Cache.get(cacheKey);
+      if (cached && Array.isArray(cached)) {
+        return cached;
+      }
+
+      // 2. Cache Miss - Fetch user and mutual connections
       const user = await Firestore.getById("users", userId);
       if (!user || !user.following || user.following.length === 0) {
         return [];
@@ -45,13 +56,18 @@ class GraphService {
       // 3. Hydrate user details
       const suggestions = await Firestore.getByIds("users", sortedCandidates);
 
-      return suggestions.map((u) => ({
-      id: u.id,
+      const result = suggestions.map((u) => ({
+        id: u.id,
         name: u.name,
         username: u.username,
-        avatar: u.avatar,
-        mutualCount: candidates.get(u.id),
+        avatar: u.avatar || u.profilePic || "",
+        mutualCount: candidates.get(u.id) || 1,
       }));
+
+      // 4. Save to Redis Cache (1 hour TTL)
+      await Cache.set(cacheKey, result, 3600);
+
+      return result;
     } catch (error) {
       console.error("GraphService Error:", error);
       return [];

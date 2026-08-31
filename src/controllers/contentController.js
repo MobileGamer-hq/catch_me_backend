@@ -1,6 +1,4 @@
-const Fuse = require("fuse.js");
-const fs = require("fs");
-const path = require("path");
+const localSearchService = require("../services/localSearch.service");
 
 //Upload
 const uploadPost = async (req, res) => {
@@ -20,7 +18,7 @@ const uploadGame = async (req, res) => {
 };
 
 /**
- * Local fuzzy search for posts using minified JSON file.
+ * Local fuzzy search for posts using in-memory Fuse cache.
  * Searches caption and tags.
  * GET /api/posts/local-search
  */
@@ -31,29 +29,11 @@ const localSearchPosts = async (req, res) => {
       return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
-    const filePath = path.join(__dirname, "..", "data", "posts_min.json");
+    const finalResults = await localSearchService.searchPosts(query);
 
-    if (!fs.existsSync(filePath)) {
+    if (finalResults === null) {
       return res.status(503).json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
-
-    const fileData = fs.readFileSync(filePath, "utf8");
-    const minPostsMap = JSON.parse(fileData);
-
-    // Convert map to array for Fuse.js
-    const postsArray = Object.values(minPostsMap).map(p => p.data);
-
-    const fuseOptions = {
-      keys: ["caption", "tags"],
-      threshold: 0.4,
-      distance: 100,
-      minMatchCharLength: 2,
-    };
-
-    const fuse = new Fuse(postsArray, fuseOptions);
-    const results = fuse.search(query);
-
-    const finalResults = results.map(r => r.item);
 
     res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {

@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { Firestore } = require("../utils/db");
+const localSearchService = require("../services/localSearch.service");
 
 /**
- * Daily job to sync minified user data from Firestore to a local JSON file.
+ * Daily job to sync minified user data from Firestore to a local JSON file and Redis.
  * This file is used for high-performance fuzzy search on the backend.
  */
 const syncMinUsers = async () => {
@@ -11,7 +12,6 @@ const syncMinUsers = async () => {
     console.log("Starting minified user sync...");
     
     // 1. Fetch all users from Firestore
-    // Note: If the user count grows extremely high, consider using pagination/streaming
     const users = await Firestore.getAll("users");
     
     // 2. Transform into the requested minified structure
@@ -37,14 +37,16 @@ const syncMinUsers = async () => {
     const dataDir = path.join(__dirname, "..", "data");
     const filePath = path.join(dataDir, "users_min.json");
     
-    // Ensure directory exists (double check)
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     
     fs.writeFileSync(filePath, JSON.stringify(minifiedUsers, null, 2), "utf8");
     
-    console.log(`Successfully synced ${users.length} users to ${filePath}`);
+    // 4. Update Redis and reload in-memory search index
+    await localSearchService.reloadUsers(minifiedUsers);
+    
+    console.log(`Successfully synced ${users.length} users to ${filePath} and Redis`);
     return true;
   } catch (error) {
     console.error("Error in syncMinUsers job:", error);

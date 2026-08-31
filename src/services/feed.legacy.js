@@ -1,26 +1,48 @@
-const { Realtime } = require("../utils/db");
+const { Realtime, Firestore } = require("../utils/db");
+const { Cache } = require("../utils/cache");
 const { FeedSystem } = require("./feed.service");
 
+// Feed cache TTL: 4 hours
+const FEED_CACHE_TTL_SECONDS = 4 * 60 * 60; // 14,400 seconds
+
 /* -------------------------------------------------------------
-   MAIN FEED GENERATION
+   MAIN FEED GENERATION WITH REDIS CACHING
 ------------------------------------------------------------- */
-async function generateUserFeed(userId, filter = "all") {
+async function generateUserFeed(userId, filter = "all", sessionContext = null) {
   try {
-    const { Firestore } = require("../utils/db");
+    const bucket = sessionContext?.bucket || "A";
+    const normalizedFilter = (filter || "all").toLowerCase();
+    const cacheKey = `feed:${userId}:${normalizedFilter}:${bucket}`;
+
+    // 1. Check Redis Cache first
+    const cachedFeed = await Cache.get(cacheKey);
+    if (cachedFeed) {
+      return cachedFeed;
+    }
+
+    // 2. Cache Miss - Fetch user and generate feed
     const user = await Firestore.getById("users", userId);
 
     if (!user) {
       throw new Error(`User ${userId} not found`);
     }
 
-    // Use the new FeedSystem class
-    const feedSystem = new FeedSystem(user);
-    const feed = await feedSystem.generateFeed(filter);
+    if (sessionContext) {
+      user.sessionContext = sessionContext;
+    }
 
-    // Save to Realtime Database
-    // We only save the "all" feed to cache for now, or use a filtered key
-    const cacheKey = filter === "all" ? userId : `${userId}_${filter}`;
-    await updateFeedInRealtimeDB(cacheKey, { data: feed });
+    // Use the FeedSystem class
+    const feedSystem = new FeedSystem(user);
+    const feed = await feedSystem.generateFeed(normalizedFilter);
+
+    // 3. Cache the computed feed in Redis with 4-hour TTL
+    await Cache.set(cacheKey, feed, FEED_CACHE_TTL_SECONDS);
+
+    // 4. Save to Realtime Database asynchronously (fire-and-forget, non-blocking)
+    const rtdbKey = normalizedFilter === "all" ? userId : `${userId}_${normalizedFilter}`;
+    updateFeedInRealtimeDB(rtdbKey, { data: feed }).catch((err) => {
+      console.warn("Background RTDB feed update failed:", err.message);
+    });
 
     return feed;
   } catch (err) {
@@ -30,74 +52,104 @@ async function generateUserFeed(userId, filter = "all") {
 }
 
 /* -------------------------------------------------------------
-   GRANULAR FEED CONTENT GENERATION
+   GRANULAR FEED CONTENT GENERATION WITH REDIS CACHING
 ------------------------------------------------------------- */
-async function getGranularContent(userId, type, filter = "all", subtype = null) {
+async function getGranularContent(userId, type, filter = "all", subtype = null, sessionContext = null) {
   try {
-    const { Firestore } = require("../utils/db");
+    const bucket = sessionContext?.bucket || "A";
+    const normalizedFilter = (filter || "all").toLowerCase();
+    const cacheKey = `feed:granular:${userId}:${type}:${subtype || "all"}:${normalizedFilter}:${bucket}`;
+
+    // 1. Check Redis Cache first
+    const cachedContent = await Cache.get(cacheKey);
+    if (cachedContent) {
+      return cachedContent;
+    }
+
     const user = await Firestore.getById("users", userId);
 
     if (!user) {
       throw new Error(`User ${userId} not found`);
     }
 
+    if (sessionContext) {
+      user.sessionContext = sessionContext;
+    }
+
     const feedSystem = new FeedSystem(user);
-    const activeFilter = (filter || "all").toLowerCase();
+    let result;
 
     switch (type) {
       case "posts":
       case "highlights":
       case "images":
-      case "thoughts":
-        const posts = await feedSystem.fetchCandidatePosts(activeFilter);
+      case "thoughts": {
+        const posts = await feedSystem.fetchCandidatePosts(normalizedFilter);
         const scoredPosts = await feedSystem.scoreContent(posts, "post");
         const qualityPosts = feedSystem.filterByQuality(scoredPosts);
         let diversePosts = qualityPosts;
-        if (activeFilter === "all" || activeFilter === "suggested") {
+        if (normalizedFilter === "all" || normalizedFilter === "suggested") {
           diversePosts = feedSystem.applyDiversity(qualityPosts);
         }
         diversePosts.sort((a, b) => b.finalScore - a.finalScore);
         const categorizedPosts = feedSystem.categorizePosts(diversePosts);
-        
-        if (type === "posts") {
-          return subtype ? (categorizedPosts[subtype] || []) : categorizedPosts;
-        }
-        return categorizedPosts[type] || [];
 
-      case "games":
-        const games = await feedSystem.fetchCandidateGames(activeFilter);
+        if (type === "posts") {
+          result = subtype ? (categorizedPosts[subtype] || []) : categorizedPosts;
+        } else {
+          result = categorizedPosts[type] || [];
+        }
+        break;
+      }
+
+      case "games": {
+        const games = await feedSystem.fetchCandidateGames(normalizedFilter);
         const scoredGames = await feedSystem.scoreContent(games, "game");
         const qualityGames = feedSystem.filterByQuality(scoredGames);
         qualityGames.sort((a, b) => b.finalScore - a.finalScore);
-        return qualityGames.slice(0, 100).map((g) => g.id);
+        result = qualityGames.slice(0, 100).map((g) => g.id);
+        break;
+      }
 
       case "users":
-        return await feedSystem.fetchSuggestedUsers();
+        result = await feedSystem.fetchSuggestedUsers();
+        break;
 
-      case "upcoming":
+      case "upcoming": {
         const upcomingGames = await feedSystem.getRecommendedGames();
-        return upcomingGames.map((g) => g.id);
-      
-      case "popular":
+        result = upcomingGames.map((g) => g.id);
+        break;
+      }
+
+      case "popular": {
         const popularPosts = await feedSystem.fetchPopularContent();
         const categorizedPopular = feedSystem.categorizePosts(popularPosts);
         if (subtype) {
-           return categorizedPopular[subtype] || [];
+          result = categorizedPopular[subtype] || [];
+        } else {
+          result = categorizedPopular;
         }
-        return categorizedPopular;
+        break;
+      }
 
       default:
         throw new Error(`Unknown feed component type: ${type}`);
     }
+
+    // 2. Cache the result in Redis with 4-hour TTL
+    if (result) {
+      await Cache.set(cacheKey, result, FEED_CACHE_TTL_SECONDS);
+    }
+
+    return result;
   } catch (err) {
     console.error(`getGranularContent (${type}) ERROR:`, err);
     throw err;
   }
 }
 
-
 /* -------------------------------------------------------------
-   SAVE FEED TO REALTIME DATABASE
+   SAVE FEED TO REALTIME DATABASE (BACKGROUND HELPER)
 ------------------------------------------------------------- */
 async function updateFeedInRealtimeDB(userId, feed) {
   await Realtime.update(`feed/${userId}`, feed);

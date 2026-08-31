@@ -1,4 +1,5 @@
 const { db, realtime } = require("../config/firebase");
+const { Cache } = require("../utils/cache");
 
 class LeaderboardService {
   /**
@@ -34,7 +35,7 @@ class LeaderboardService {
   }
 
   /**
-   * Fetches and ranks users based on filters, utilizing RTDB as a daily cache.
+   * Fetches and ranks users based on filters, utilizing Redis first and RTDB as fallback.
    * @param {Object} filters Query parameters like role, country, sport, etc.
    * @param {number} limit Max number of results.
    * @param {number} page Page number for pagination.
@@ -42,28 +43,36 @@ class LeaderboardService {
    */
   static async getRankings(filters = {}, limit = 50, page = 1) {
     const cacheKey = this.generateCacheKey(filters);
-    const cacheRef = realtime.ref(`leaderboards/${cacheKey}`);
+    const redisKey = `leaderboard:${cacheKey}`;
 
-    // Check cache
+    // 1. Check Redis Cache first (Fastest path)
+    const cachedRedis = await Cache.get(redisKey);
+    if (cachedRedis && Array.isArray(cachedRedis)) {
+      return this.paginateRankings(cachedRedis, limit, page);
+    }
+
+    // 2. Check RTDB cache
+    const cacheRef = realtime.ref(`leaderboards/${cacheKey}`);
     const snapshot = await cacheRef.once("value");
     const cachedData = snapshot.val();
 
-    // Check if cached data exists and was updated today
+    // Check if RTDB cached data exists and was updated today
     if (cachedData && cachedData.lastUpdated) {
       const todayString = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
       const cacheDateString = new Date(cachedData.lastUpdated)
         .toISOString()
         .split("T")[0];
 
-      if (todayString === cacheDateString && cachedData.rankings) {
-        console.log(`[Leaderboard] Returning cached data for key: ${cacheKey}`);
+      if (todayString === cacheDateString && Array.isArray(cachedData.rankings)) {
+        // Warm Redis cache for subsequent calls (24 hours TTL)
+        await Cache.set(redisKey, cachedData.rankings, 86400);
         return this.paginateRankings(cachedData.rankings, limit, page);
       }
     }
 
     console.log(`[Leaderboard] Computing new rankings for key: ${cacheKey}`);
 
-    // If no valid cache, compute new rankings from Firestore
+    // 3. Compute new rankings from Firestore
     let usersQuery = db.collection("users");
 
     // Apply exact match filters
@@ -87,9 +96,6 @@ class LeaderboardService {
 
     // Sport array filtering
     if (filters.sport) {
-      // Assuming we want to check both arrays, but Firestore doesn't support multiple array-contains.
-      // We will check favoriteSports. Alternative: filter after fetching.
-      // To keep it performant, we use array-contains on one field.
       usersQuery = usersQuery.where(
         "favoriteSports",
         "array-contains",
@@ -102,7 +108,6 @@ class LeaderboardService {
     let users = [];
     querySnapshot.forEach((doc) => {
       const userData = doc.data();
-      // Calculate score and add ID
       users.push({
         id: doc.id,
         username: userData.username || "",
@@ -120,13 +125,17 @@ class LeaderboardService {
     // Sort descending by score
     users.sort((a, b) => b.score - a.score);
 
-    // Save to RTDB cache
+    // 4. Save to Redis Cache (24-hour TTL)
+    await Cache.set(redisKey, users, 86400);
+
+    // 5. Save to RTDB cache in background
     const newDataToCache = {
       lastUpdated: new Date().toISOString(),
       rankings: users,
     };
-
-    await cacheRef.set(newDataToCache);
+    cacheRef.set(newDataToCache).catch((e) => {
+      console.warn("[Leaderboard] RTDB set warning:", e.message);
+    });
 
     return this.paginateRankings(users, limit, page);
   }

@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { Firestore } = require("../utils/db");
+const localSearchService = require("../services/localSearch.service");
 
 /**
- * Daily job to sync minified post data from Firestore to a local JSON file.
+ * Daily job to sync minified post data from Firestore to a local JSON file and Redis.
  * Includes caption and tags for fuzzy search.
  */
 const syncMinPosts = async () => {
@@ -44,7 +45,10 @@ const syncMinPosts = async () => {
     
     fs.writeFileSync(filePath, JSON.stringify(minifiedPosts, null, 2), "utf8");
     
-    console.log(`Successfully synced ${posts.length} posts to ${filePath}`);
+    // 4. Update Redis and reload in-memory search index
+    await localSearchService.reloadPosts(minifiedPosts);
+    
+    console.log(`Successfully synced ${posts.length} posts to ${filePath} and Redis`);
     return true;
   } catch (error) {
     console.error("Error in syncMinPosts job:", error);

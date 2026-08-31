@@ -1,7 +1,5 @@
 const { db, admin } = require("../config/firebase");
-const Fuse = require("fuse.js");
-const fs = require("fs");
-const path = require("path");
+const localSearchService = require("../services/localSearch.service");
 
 const eventsCollection = db.collection("events");
 
@@ -146,29 +144,11 @@ const localSearchGames = async (req, res) => {
       return res.status(400).json({ status: "FAILED", error: "Missing search query" });
     }
 
-    const filePath = path.join(__dirname, "..", "data", "games_min.json");
+    const finalResults = await localSearchService.searchGames(query);
 
-    if (!fs.existsSync(filePath)) {
+    if (finalResults === null) {
       return res.status(503).json({ status: "FAILED", error: "Search index not ready. Please try again later." });
     }
-
-    const fileData = fs.readFileSync(filePath, "utf8");
-    const minGamesMap = JSON.parse(fileData);
-
-    // Convert map to array for Fuse.js
-    const gamesArray = Object.values(minGamesMap).map(g => g.data);
-
-    const fuseOptions = {
-      keys: ["title", "sport", "tags"],
-      threshold: 0.4,
-      distance: 100,
-      minMatchCharLength: 2,
-    };
-
-    const fuse = new Fuse(gamesArray, fuseOptions);
-    const results = fuse.search(query);
-
-    const finalResults = results.map(r => r.item);
 
     res.status(200).json({ status: "SUCCESS", data: finalResults });
   } catch (err) {

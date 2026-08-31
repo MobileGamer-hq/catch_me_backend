@@ -1,33 +1,52 @@
 const Redis = require("ioredis");
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+let redisUrl = process.env.REDIS_URL;
+
+if (!redisUrl && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const host = process.env.UPSTASH_REDIS_REST_URL.replace(/^https?:\/\//, "");
+  redisUrl = `rediss://default:${process.env.UPSTASH_REDIS_REST_TOKEN}@${host}:6379`;
+}
+
+if (!redisUrl) {
+  redisUrl = "redis://localhost:6379";
+}
 
 let redis = null;
 let isRedisAvailable = false;
 
 try {
-  redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 1,
+  redis = new Redis(redisUrl, {
+    maxRetriesPerRequest: 3,
+    connectTimeout: 5000,
     retryStrategy: (times) => {
-      if (times > 3) {
-        console.warn(
-          "⚠️ Redis connection failed. Switching to in-memory fallback.",
-        );
+      if (times > 5) {
+        console.warn("⚠️ Redis connection failed after 5 retries. Switching to in-memory fallback.");
         return null; // Stop retrying
       }
-      return Math.min(times * 50, 2000);
+      return Math.min(times * 100, 3000);
     },
   });
 
   redis.on("connect", () => {
-    console.log("✅ Redis connected");
+    console.log("✅ Redis connected successfully");
     isRedisAvailable = true;
   });
 
+  redis.on("ready", () => {
+    isRedisAvailable = true;
+  });
+
+  redis.on("close", () => {
+    isRedisAvailable = false;
+  });
+
+  redis.on("reconnecting", () => {
+    console.log("🔄 Redis reconnecting...");
+  });
+
   redis.on("error", (err) => {
-    // Suppress initial connection errors to avoid console spam if Redis isn't running
     if (isRedisAvailable) {
-      console.error("Redis Error:", err.message);
+      console.warn("⚠️ Redis Error:", err.message);
     }
     isRedisAvailable = false;
   });
