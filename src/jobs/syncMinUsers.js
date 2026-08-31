@@ -23,7 +23,8 @@ const syncMinUsers = async () => {
         username: user.username || "",
         name: user.name || "",
         profilePic: user.profilePic || "",
-        role: user.role || ""
+        role: user.role || "",
+        verified: !!user.verified,
       };
       
       minifiedUsers[user.id] = {

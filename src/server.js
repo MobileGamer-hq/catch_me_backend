@@ -4,6 +4,7 @@ const {
   watchPosts,
   watchEvents,
   watchGames,
+  watchUsers,
 } = require("./services/listener.service");
 
 // ✅ START CRON JOBS
@@ -11,6 +12,7 @@ require("./jobs/cron");
 
 const PORT = process.env.PORT || 5000;
 
+watchUsers();
 watchPosts();
 watchGames();
 watchEvents();

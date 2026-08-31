@@ -203,8 +203,40 @@ function watchEvents() {
   });
 }
 
+/* ────────────────────────────────────────────────
+   Watch USERS (Real-time Local Search Index Sync)
+ ────────────────────────────────────────────────── */
+function watchUsers() {
+  const localSearchService = require("./localSearch.service");
+  let isInitialLoad = true;
+
+  db.collection("users").onSnapshot((snapshot) => {
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      console.log("[Listener] Initializing users real-time listener");
+      return;
+    }
+
+    for (const change of snapshot.docChanges()) {
+      const userId = change.doc.id;
+      const user = change.doc.data();
+
+      if (change.type === "added" || change.type === "modified") {
+        console.log(`[Listener] User ${userId} (${user.username || user.name}) ${change.type}. Updating search index...`);
+        localSearchService.upsertUser(userId, user);
+      } else if (change.type === "removed") {
+        console.log(`[Listener] User ${userId} removed. Updating search index...`);
+        localSearchService.removeUser(userId);
+      }
+    }
+  }, (err) => {
+    console.error("[Listener] watchUsers error:", err.message);
+  });
+}
+
 module.exports = {
   watchPosts,
   watchGames,
   watchEvents,
+  watchUsers,
 };
