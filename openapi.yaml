@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Catch Me Backend API
-  description: |
-    # Catch Me API Specification
-    Comprehensive OpenAPI 3.0 documentation for the **Catch Me Backend** service. 
-    This API powers the Catch Me sports social and matchmaking ecosystem, handling user management, live match tracking, feed scoring and recommendations, engagement signals, leaderboards, global search, and AI-powered match summaries (via Google Gemini and xAI Grok).
+  description: "# Catch Me API Specification\nComprehensive OpenAPI 3.0 documentation\
+    \ for the **Catch Me Backend** service. \nThis API powers the Catch Me sports\
+    \ social and matchmaking ecosystem, handling user management, live match tracking,\
+    \ feed scoring and recommendations, engagement signals, leaderboards, global search,\
+    \ and AI-powered match summaries (via Google Gemini and xAI Grok).\n"
   version: 1.0.0
   contact:
     name: Catch Me Engineering Team
@@ -12,475 +13,497 @@ info:
     email: dev@catchme.live
   license:
     name: ISC
-
 servers:
-  - url: http://localhost:5000
-    description: Local Development Server
-  - url: https://api.catchme.live
-    description: Production Primary Server
-  - url: https://api2.catchme.live
-    description: Production Secondary Server
-
+- url: http://localhost:5000
+  description: Local Development Server
+- url: https://api.catchme.live
+  description: Production Primary Server
+- url: https://api2.catchme.live
+  description: Production Secondary Server
 tags:
-  - name: System
-    description: Health check and root operational endpoints
-  - name: Users
-    description: User profile retrieval, fuzzy/prefix search, cascading deletion, and "You May Know" graph suggestions
-  - name: Feed
-    description: Personalized algorithmic content feed and granular component fetching
-  - name: Games
-    description: Match lifecycle, statistics standardization, dynamic PDF exports, and AI game commentaries
-  - name: Events
-    description: Sports events management, type filtering, local fuzzy search, and cascading deletion
-  - name: Posts
-    description: Content post queries, local caption/tag search, and cascading deletion
-  - name: Engagement
-    description: Implicit user engagement tracking (dwell time, clicks, views)
-  - name: Leaderboard
-    description: Real-time user rankings with daily Realtime Database caching
-  - name: Notifications
-    description: FCM push notification dispatching, multicast, and broadcast engine
-  - name: Search
-    description: Multi-entity search across users, teams, and hashtags
-
+- name: System
+  description: Health check and root operational endpoints
+- name: Users
+  description: User profile retrieval, fuzzy/prefix search, cascading deletion, and
+    "You May Know" graph suggestions
+- name: Feed
+  description: Personalized algorithmic content feed and granular component fetching
+- name: Games
+  description: Match lifecycle, statistics standardization, dynamic PDF exports, and
+    AI game commentaries
+- name: Events
+  description: Sports events management, type filtering, local fuzzy search, and cascading
+    deletion
+- name: Posts
+  description: Content post queries, local caption/tag search, and cascading deletion
+- name: Engagement
+  description: Implicit user engagement tracking (dwell time, clicks, views)
+- name: Leaderboard
+  description: Real-time user rankings with daily Realtime Database caching
+- name: Notifications
+  description: FCM push notification dispatching, multicast, and broadcast engine
+- name: Search
+  description: Multi-entity search across users, teams, and hashtags
+- name: Batch
+  description: High-performance Redis-first batch entity lookups (users, posts, events,
+    games) preventing client-side Firestore read spikes
 paths:
   /:
     get:
       tags:
-        - System
+      - System
       summary: Root Service Verification
-      description: Returns service identifier string to verify that the server is online.
+      description: Returns service identifier string to verify that the server is
+        online.
       responses:
-        "200":
+        '200':
           description: Service online
           content:
             text/plain:
               schema:
                 type: string
-                example: "Catch Me Backend"
-
+                example: Catch Me Backend
   /ping:
     get:
       tags:
-        - System
+      - System
       summary: Ping Health Check
       description: Lightweight probe for load balancer health checking.
       responses:
-        "200":
+        '200':
           description: Server healthy
           content:
             text/plain:
               schema:
                 type: string
-                example: "Pong!"
-
+                example: Pong!
   /api/users:
     get:
       tags:
-        - Users
+      - Users
       summary: Get All Users
       description: Retrieves all user profiles stored in Firestore.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
+      - $ref: '#/components/parameters/SessionIdHeader'
       responses:
-        "200":
+        '200':
           description: List of user profiles
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/User"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/User'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/users/local-search:
     get:
       tags:
-        - Users
+      - Users
       summary: Local Fuzzy Search Users
-      description: Fast in-memory fuzzy search across minified local user data (`users_min.json`) via Fuse.js matching against `name` and `username`.
+      description: Fast in-memory fuzzy search across minified local user data (`users_min.json`)
+        via Fuse.js matching against `name` and `username`.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - name: q
-          in: query
-          required: true
-          description: Query string matching name or username
-          schema:
-            type: string
-            example: "jane"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - name: q
+        in: query
+        required: true
+        description: Query string matching name or username
+        schema:
+          type: string
+          example: jane
       responses:
-        "200":
+        '200':
           description: Matched users list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/MinifiedUser"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "503":
-          $ref: "#/components/responses/503ServiceUnavailable"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/MinifiedUser'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '503':
+          $ref: '#/components/responses/503ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/users/search:
     get:
       tags:
-        - Users
+      - Users
       summary: Search Users (Firestore Prefix)
-      description: Performs a prefix query directly against the `name` property in the Firestore `users` collection.
+      description: Performs a prefix query directly against the `name` property in
+        the Firestore `users` collection.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - name: q
-          in: query
-          required: true
-          description: Name prefix query string
-          schema:
-            type: string
-            example: "Jan"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - name: q
+        in: query
+        required: true
+        description: Name prefix query string
+        schema:
+          type: string
+          example: Jan
       responses:
-        "200":
+        '200':
           description: Array of matched user documents
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/User"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/users/{id}:
     get:
       tags:
-        - Users
+      - Users
       summary: Get User by ID
-      description: Retrieves complete user profile and preferences by Firestore document ID.
+      description: Retrieves complete user profile and preferences by Firestore document
+        ID.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - $ref: "#/components/parameters/UserIdPathParam"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - $ref: '#/components/parameters/UserIdPathParam'
       responses:
-        "200":
+        '200':
           description: User profile found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
     delete:
       tags:
-        - Users
+      - Users
       summary: Delete User (Cascading Cleanup)
-      description: |
-        Deletes a user account and removes all associated traces across Firestore in an atomic batch:
-        - Removes ID from other users' `followers`, `following`, and `blockedUsers`.
-        - Removes ID from all posts' `likes`, `shares`, and `saves`.
+      description: 'Deletes a user account and removes all associated traces across
+        Firestore in an atomic batch:
+
+        - Removes ID from other users'' `followers`, `following`, and `blockedUsers`.
+
+        - Removes ID from all posts'' `likes`, `shares`, and `saves`.
+
         - Deletes all posts authored by the user.
+
         - Removes user from event player rosters (`data.players`) and polls (`data.votes.userVotes`).
+
         - Deletes all chat documents where the user is a member.
+
         - Deletes the primary user record.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/UserIdPathParam"
+      - $ref: '#/components/parameters/UserIdPathParam'
       responses:
-        "200":
+        '200':
           description: User and all references successfully deleted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessMessageResponse"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/users/{id}/suggestions:
     get:
       tags:
-        - Users
+      - Users
       summary: Get User Suggestions ("You May Know")
-      description: Traverses social graph (2nd-degree connections) to recommend users followed by the people the current user follows, ranked by mutual friend count.
+      description: Traverses social graph (2nd-degree connections) to recommend users
+        followed by the people the current user follows, ranked by mutual friend count.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - $ref: "#/components/parameters/UserIdPathParam"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - $ref: '#/components/parameters/UserIdPathParam'
       responses:
-        "200":
+        '200':
           description: List of user suggestions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/UserSuggestion"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/UserSuggestion'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/feed/{id}:
     get:
       tags:
-        - Feed
+      - Feed
       summary: Get User Feed
-      description: |
-        Generates a comprehensive personalized feed for a user based on engagement weights, role multipliers, content quality thresholds, diversity controls, and affinity bonuses.
+      description: 'Generates a comprehensive personalized feed for a user based on
+        engagement weights, role multipliers, content quality thresholds, diversity
+        controls, and affinity bonuses.
+
         Feed results are automatically cached in the Firebase Realtime Database.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - $ref: "#/components/parameters/UserIdPathParam"
-        - $ref: "#/components/parameters/FeedFilterParam"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - $ref: '#/components/parameters/UserIdPathParam'
+      - $ref: '#/components/parameters/FeedFilterParam'
       responses:
-        "200":
+        '200':
           description: Personalized feed response
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FeedResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/FeedResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/feed/{id}/{type}:
     get:
       tags:
-        - Feed
+      - Feed
       summary: Get Granular Feed Component
-      description: Retrieves a specific component of the feed for modular UI rendering or infinite scrolling.
+      description: Retrieves a specific component of the feed for modular UI rendering
+        or infinite scrolling.
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - $ref: "#/components/parameters/UserIdPathParam"
-        - name: type
-          in: path
-          required: true
-          description: Feed component category
-          schema:
-            type: string
-            enum: [posts, highlights, images, thoughts, games, users, upcoming, popular]
-            example: "highlights"
-        - $ref: "#/components/parameters/FeedFilterParam"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - $ref: '#/components/parameters/UserIdPathParam'
+      - name: type
+        in: path
+        required: true
+        description: Feed component category
+        schema:
+          type: string
+          enum:
+          - posts
+          - highlights
+          - images
+          - thoughts
+          - games
+          - users
+          - upcoming
+          - popular
+          example: highlights
+      - $ref: '#/components/parameters/FeedFilterParam'
       responses:
-        "200":
+        '200':
           description: Granular feed segment data
           content:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/FeedPosts"
-                  - type: array
-                    items:
-                      $ref: "#/components/schemas/PostItem"
-                  - type: array
-                    items:
-                      type: string
-                      description: Game or Event IDs
-                  - type: array
-                    items:
-                      $ref: "#/components/schemas/UserSuggestion"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                - $ref: '#/components/schemas/FeedPosts'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/PostItem'
+                - type: array
+                  items:
+                    type: string
+                    description: Game or Event IDs
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/UserSuggestion'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/feed/{id}/{type}/{subtype}:
     get:
       tags:
-        - Feed
+      - Feed
       summary: Get Granular Feed Subtype Component
-      description: Retrieves a filtered sub-component (e.g. `/api/feed/user123/posts/highlights` or `/api/feed/user123/popular/images`).
+      description: Retrieves a filtered sub-component (e.g. `/api/feed/user123/posts/highlights`
+        or `/api/feed/user123/popular/images`).
       parameters:
-        - $ref: "#/components/parameters/SessionIdHeader"
-        - $ref: "#/components/parameters/UserIdPathParam"
-        - name: type
-          in: path
-          required: true
-          description: Component parent type (`posts` or `popular`)
-          schema:
-            type: string
-            enum: [posts, popular]
-            example: "posts"
-        - name: subtype
-          in: path
-          required: true
-          description: Specific content format subtype
-          schema:
-            type: string
-            enum: [highlights, images, thoughts]
-            example: "highlights"
-        - $ref: "#/components/parameters/FeedFilterParam"
+      - $ref: '#/components/parameters/SessionIdHeader'
+      - $ref: '#/components/parameters/UserIdPathParam'
+      - name: type
+        in: path
+        required: true
+        description: Component parent type (`posts` or `popular`)
+        schema:
+          type: string
+          enum:
+          - posts
+          - popular
+          example: posts
+      - name: subtype
+        in: path
+        required: true
+        description: Specific content format subtype
+        schema:
+          type: string
+          enum:
+          - highlights
+          - images
+          - thoughts
+          example: highlights
+      - $ref: '#/components/parameters/FeedFilterParam'
       responses:
-        "200":
+        '200':
           description: Subtype post array
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PostItem"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/PostItem'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games:
     get:
       tags:
-        - Games
+      - Games
       summary: Get All Games
       description: Retrieves all match events (`type == "game"`) from Firestore.
       responses:
-        "200":
+        '200':
           description: List of game objects
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/GameEvent"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/GameEvent'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}:
     get:
       tags:
-        - Games
+      - Games
       summary: Get Game by ID
       description: Retrieves a single match event by ID.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Game details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameEvent"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/GameEvent'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}/standardize:
     post:
       tags:
-        - Games
+      - Games
       summary: Standardize Game Data
-      description: Re-computes and standardizes team stats and player stats according to the sport's scoring rules, updating Firestore.
+      description: Re-computes and standardizes team stats and player stats according
+        to the sport's scoring rules, updating Firestore.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Game standardized successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameStandardizeResponse"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/GameStandardizeResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}/end:
     post:
       tags:
-        - Games
+      - Games
       summary: End Game
       description: Concludes a match by marking its status as `ended`.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Updated ended game document
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameEvent"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/GameEvent'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}/export:
     post:
       tags:
-        - Games
+      - Games
       summary: Export Game PDF Link
-      description: Returns the URL used to stream/download the dynamic PDF game summary report.
+      description: Returns the URL used to stream/download the dynamic PDF game summary
+        report.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Download link payload
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExportPdfResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/ExportPdfResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}/download:
     get:
       tags:
-        - Games
+      - Games
       summary: Download Game PDF Report
-      description: Generates and streams a binary PDF game report containing team scores, stats tables, and game event timelines.
+      description: Generates and streams a binary PDF game report containing team
+        scores, stats tables, and game event timelines.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Binary PDF file attachment
           content:
             application/pdf:
               schema:
                 type: string
                 format: binary
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/games/{id}/summary:
     post:
       tags:
-        - Games
+      - Games
       summary: Create AI Game Summary
-      description: Generates an AI-written sports commentary summary using Google Gemini (with fallback to xAI Grok) and saves it in Firebase Realtime Database.
+      description: Generates an AI-written sports commentary summary using Google
+        Gemini (with fallback to xAI Grok) and saves it in Firebase Realtime Database.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "201":
+        '201':
           description: Summary successfully created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameSummaryResponse"
-        "200":
+                $ref: '#/components/schemas/GameSummaryResponse'
+        '200':
           description: Existing summary retrieved from cache
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameSummaryResponse"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/GameSummaryResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
     put:
       tags:
-        - Games
+      - Games
       summary: Update AI Game Summary
-      description: Regenerates AI game summary if the previous summary is older than 10 minutes (rate limited).
+      description: Regenerates AI game summary if the previous summary is older than
+        10 minutes (rate limited).
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Summary updated successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GameSummaryResponse"
-        "400":
+                $ref: '#/components/schemas/GameSummaryResponse'
+        '400':
           description: Throttle limit reached (last updated < 10 minutes ago)
           content:
             application/json:
@@ -489,65 +512,64 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Summary was updated recently. Please wait before updating again."
+                    example: Summary was updated recently. Please wait before updating
+                      again.
                   summary:
-                    $ref: "#/components/schemas/GameSummaryResponse"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                    $ref: '#/components/schemas/GameSummaryResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
     delete:
       tags:
-        - Games
+      - Games
       summary: Delete AI Game Summary
       description: Removes the game commentary summary from Firebase Realtime Database.
       parameters:
-        - $ref: "#/components/parameters/GameIdPathParam"
+      - $ref: '#/components/parameters/GameIdPathParam'
       responses:
-        "200":
+        '200':
           description: Summary deleted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessMessageResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/events:
     get:
       tags:
-        - Events
+      - Events
       summary: Get All Events
       description: Retrieves all event records from Firestore.
       responses:
-        "200":
+        '200':
           description: List of all events
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/EventItem"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/EventItem'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/events/local-search:
     get:
       tags:
-        - Events
+      - Events
       summary: Local Fuzzy Search Events
-      description: Fast in-memory fuzzy search across minified local game and event data (`games_min.json`) via Fuse.js.
+      description: Fast in-memory fuzzy search across minified local game and event
+        data (`games_min.json`) via Fuse.js.
       parameters:
-        - name: q
-          in: query
-          required: true
-          description: Search term matching event title, sport, or tag
-          schema:
-            type: string
-            example: "basketball"
+      - name: q
+        in: query
+        required: true
+        description: Search term matching event title, sport, or tag
+        schema:
+          type: string
+          example: basketball
       responses:
-        "200":
+        '200':
           description: Matched event results
           content:
             application/json:
@@ -566,95 +588,96 @@ paths:
                       type: array
                       items:
                         type: string
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "503":
-          $ref: "#/components/responses/503ServiceUnavailable"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '503':
+          $ref: '#/components/responses/503ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/events/{id}:
     get:
       tags:
-        - Events
+      - Events
       summary: Get Event by ID
       description: Retrieves details of a specific event by Firestore Document ID.
       parameters:
-        - $ref: "#/components/parameters/EventIdPathParam"
+      - $ref: '#/components/parameters/EventIdPathParam'
       responses:
-        "200":
+        '200':
           description: Event found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EventItem"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/EventItem'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
     delete:
       tags:
-        - Events
+      - Events
       summary: Delete Event (Cascading Cleanup)
-      description: |
-        Deletes the event document and atomically removes its ID from users' `events`, `games`, `myCustomEvents`, `myGames`, `feed.events`, and `feed.games` arrays.
+      description: 'Deletes the event document and atomically removes its ID from
+        users'' `events`, `games`, `myCustomEvents`, `myGames`, `feed.events`, and
+        `feed.games` arrays.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/EventIdPathParam"
+      - $ref: '#/components/parameters/EventIdPathParam'
       responses:
-        "200":
+        '200':
           description: Event and its references deleted successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessMessageResponse"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/events/{type}:
     get:
       tags:
-        - Events
+      - Events
       summary: Get Events by Type
-      description: Retrieves events filtered by their `type` attribute (e.g. `game`, `practice`, `tournament`, `tryout`).
+      description: Retrieves events filtered by their `type` attribute (e.g. `game`,
+        `practice`, `tournament`, `tryout`).
       parameters:
-        - name: type
-          in: path
-          required: true
-          description: Event category type
-          schema:
-            type: string
-            example: "practice"
+      - name: type
+        in: path
+        required: true
+        description: Event category type
+        schema:
+          type: string
+          example: practice
       responses:
-        "200":
+        '200':
           description: Array of events matching the type
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/EventItem"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                  $ref: '#/components/schemas/EventItem'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/posts/local-search:
     get:
       tags:
-        - Posts
+      - Posts
       summary: Local Fuzzy Search Posts
-      description: Fast in-memory search across minified local post data (`posts_min.json`) via Fuse.js matching against `caption` and `tags`.
+      description: Fast in-memory search across minified local post data (`posts_min.json`)
+        via Fuse.js matching against `caption` and `tags`.
       parameters:
-        - name: q
-          in: query
-          required: true
-          description: Search term matching post caption or hashtags
-          schema:
-            type: string
-            example: "dunk"
+      - name: q
+        in: query
+        required: true
+        description: Search term matching post caption or hashtags
+        schema:
+          type: string
+          example: dunk
       responses:
-        "200":
+        '200':
           description: Matched posts list
           content:
             application/json:
@@ -675,178 +698,345 @@ paths:
                       type: string
                     type:
                       type: string
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "503":
-          $ref: "#/components/responses/503ServiceUnavailable"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '503':
+          $ref: '#/components/responses/503ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/posts/{id}:
     get:
       tags:
-        - Posts
+      - Posts
       summary: Get User Post Feed
       description: Generates user feed for the specified user ID.
       parameters:
-        - $ref: "#/components/parameters/PostIdPathParam"
-        - $ref: "#/components/parameters/FeedFilterParam"
+      - $ref: '#/components/parameters/PostIdPathParam'
+      - $ref: '#/components/parameters/FeedFilterParam'
       responses:
-        "200":
+        '200':
           description: Feed response object
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FeedResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/FeedResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
     delete:
       tags:
-        - Posts
+      - Posts
       summary: Delete Post (Cascading Cleanup)
-      description: |
-        Deletes a post and cleans up references across other collections:
+      description: 'Deletes a post and cleans up references across other collections:
+
         - Removes post ID from `likedPosts` of all users who liked it.
+
         - Removes post ID from `savedPosts` of all users who saved it.
-        - Removes post ID from creator's `posts` array.
+
+        - Removes post ID from creator''s `posts` array.
+
         - Deletes the primary post document.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/PostIdPathParam"
+      - $ref: '#/components/parameters/PostIdPathParam'
       responses:
-        "200":
+        '200':
           description: Post deleted successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessMessageResponse"
-        "404":
-          $ref: "#/components/responses/404NotFound"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/engage/signal:
     post:
       tags:
-        - Engagement
+      - Engagement
       summary: Record Engagement Signal
-      description: Records user engagement signals such as viewing dwell time (in milliseconds) or user click interactions on posts or games.
+      description: Records user engagement signals such as viewing dwell time (in
+        milliseconds) or user click interactions on posts or games.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/EngagementSignalRequest"
+              $ref: '#/components/schemas/EngagementSignalRequest'
       responses:
-        "200":
+        '200':
           description: Engagement signal recorded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EngagementSuccessResponse"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/EngagementSuccessResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/leaderboard:
     get:
       tags:
-        - Leaderboard
+      - Leaderboard
       summary: Get Rankings Leaderboard
-      description: |
-        Returns paginated and ranked user leaderboards based on score calculation: `(level * 100) + xp + (followers * 5) + (posts * 2)`.
+      description: 'Returns paginated and ranked user leaderboards based on score
+        calculation: `(level * 100) + xp + (followers * 5) + (posts * 2)`.
+
         Results are cached daily per filter combination in Firebase Realtime Database.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/LeaderboardRoleParam"
-        - $ref: "#/components/parameters/LeaderboardCountryParam"
-        - $ref: "#/components/parameters/LeaderboardLocationParam"
-        - $ref: "#/components/parameters/LeaderboardRegionParam"
-        - $ref: "#/components/parameters/LeaderboardSportParam"
-        - $ref: "#/components/parameters/LimitQueryParam"
-        - $ref: "#/components/parameters/PageQueryParam"
+      - $ref: '#/components/parameters/LeaderboardRoleParam'
+      - $ref: '#/components/parameters/LeaderboardCountryParam'
+      - $ref: '#/components/parameters/LeaderboardLocationParam'
+      - $ref: '#/components/parameters/LeaderboardRegionParam'
+      - $ref: '#/components/parameters/LeaderboardSportParam'
+      - $ref: '#/components/parameters/LimitQueryParam'
+      - $ref: '#/components/parameters/PageQueryParam'
       responses:
-        "200":
+        '200':
           description: Paginated leaderboard rankings
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LeaderboardResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/notifications/send:
     post:
       tags:
-        - Notifications
+      - Notifications
       summary: Send Notification / Event
-      description: Dispatches push notifications (or silent in-app events) via FCM and logs the dispatch in Firebase Realtime Database.
+      description: Dispatches push notifications (or silent in-app events) via FCM
+        and logs the dispatch in Firebase Realtime Database.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NotificationSendRequest"
+              $ref: '#/components/schemas/NotificationSendRequest'
       responses:
-        "200":
+        '200':
           description: Notification successfully sent
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NotificationSendResponse"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/NotificationSendResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/notifications/send-all:
     post:
       tags:
-        - Notifications
+      - Notifications
       summary: Broadcast Notification to All Users
-      description: Resolves all active FCM device tokens for all registered users and executes a multicast push dispatch.
+      description: Resolves all active FCM device tokens for all registered users
+        and executes a multicast push dispatch.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NotificationSendAllRequest"
+              $ref: '#/components/schemas/NotificationSendAllRequest'
       responses:
-        "200":
+        '200':
           description: Broadcast successfully dispatched
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NotificationSendResponse"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/NotificationSendResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
   /api/search:
     get:
       tags:
-        - Search
+      - Search
       summary: Global Search
-      description: Executes unified search across individual user accounts, team accounts, and trending hashtags.
+      description: Executes unified search across individual user accounts, team accounts,
+        and trending hashtags.
       parameters:
-        - name: q
-          in: query
-          required: true
-          description: Search term query
-          schema:
-            type: string
-            example: "warriors"
+      - name: q
+        in: query
+        required: true
+        description: Search term query
+        schema:
+          type: string
+          example: warriors
       responses:
-        "200":
+        '200':
           description: Multi-entity search results
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GlobalSearchResponse"
-        "400":
-          $ref: "#/components/responses/400BadRequest"
-        "500":
-          $ref: "#/components/responses/500InternalServerError"
-
+                $ref: '#/components/schemas/GlobalSearchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/batch:
+    post:
+      tags:
+      - Batch
+      summary: Universal Multi-Entity Batch Fetch
+      description: Fetches multiple entities (users, posts, events, games) in a single
+        request. Utilizes Redis-first caching (1-hour TTL). Only IDs that are cache
+        misses are fetched from Firestore and cached automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MultiBatchRequest'
+      responses:
+        '200':
+          description: Batch fetch results with cache performance metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultiBatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/batch/{type}:
+    post:
+      tags:
+      - Batch
+      summary: Type-Specific Batch Fetch
+      description: Batch fetches items for a given entity type (`users`, `posts`,
+        `events`, `games`) by ID. Checks Upstash Redis cache first (1-hour TTL); fetches
+        missing items from Firestore and populates Redis.
+      parameters:
+      - name: type
+        in: path
+        required: true
+        description: Entity type to fetch
+        schema:
+          type: string
+          enum:
+          - users
+          - posts
+          - events
+          - games
+          example: users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '200':
+          description: List of resolved entities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/users/batch:
+    post:
+      tags:
+      - Users
+      - Batch
+      summary: Batch Get Users (Redis-first)
+      description: Retrieves multiple user profiles by array of IDs. Checks Redis
+        `user:profile:{id}` (1-hour TTL) before querying Firestore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '200':
+          description: Array of user profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/posts/batch:
+    post:
+      tags:
+      - Posts
+      - Batch
+      summary: Batch Get Posts (Redis-first)
+      description: Retrieves multiple posts by array of IDs. Checks Redis `post:{id}`
+        (1-hour TTL) before querying Firestore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '200':
+          description: Array of post objects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/events/batch:
+    post:
+      tags:
+      - Events
+      - Batch
+      summary: Batch Get Events (Redis-first)
+      description: Retrieves multiple events by array of IDs. Checks Redis `event:{id}`
+        (1-hour TTL) before querying Firestore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '200':
+          description: Array of event objects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/games/batch:
+    post:
+      tags:
+      - Games
+      - Batch
+      summary: Batch Get Games (Redis-first)
+      description: Retrieves multiple games by array of IDs. Checks Redis `event:{id}`
+        (1-hour TTL) before querying Firestore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '200':
+          description: Array of game objects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -854,18 +1044,17 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Optional bearer token for authenticated user actions.
-
   parameters:
     SessionIdHeader:
       name: x-session-id
       in: header
       required: false
-      description: Client session identifier for A/B testing and algorithmic bucket routing (`A` or `B`).
+      description: Client session identifier for A/B testing and algorithmic bucket
+        routing (`A` or `B`).
       schema:
         type: string
-        default: "default"
-        example: "session_user_991823"
-
+        default: default
+        example: session_user_991823
     UserIdPathParam:
       name: id
       in: path
@@ -873,8 +1062,7 @@ components:
       description: Target user's Firestore document ID
       schema:
         type: string
-        example: "user_abc123"
-
+        example: user_abc123
     GameIdPathParam:
       name: id
       in: path
@@ -882,8 +1070,7 @@ components:
       description: Target game's Firestore event ID
       schema:
         type: string
-        example: "game_101"
-
+        example: game_101
     EventIdPathParam:
       name: id
       in: path
@@ -891,8 +1078,7 @@ components:
       description: Target event's Firestore document ID
       schema:
         type: string
-        example: "event_001"
-
+        example: event_001
     PostIdPathParam:
       name: id
       in: path
@@ -900,8 +1086,7 @@ components:
       description: Target post's Firestore document ID (or User ID for post feed)
       schema:
         type: string
-        example: "post_789"
-
+        example: post_789
     FeedFilterParam:
       name: filter
       in: query
@@ -909,10 +1094,13 @@ components:
       description: Filter strategy for feed recommendations
       schema:
         type: string
-        enum: [all, followers, trending, suggested]
+        enum:
+        - all
+        - followers
+        - trending
+        - suggested
         default: all
-        example: "all"
-
+        example: all
     LeaderboardRoleParam:
       name: role
       in: query
@@ -920,9 +1108,13 @@ components:
       description: User role filter
       schema:
         type: string
-        enum: [athlete, coach, scout, team, fan]
-        example: "athlete"
-
+        enum:
+        - athlete
+        - coach
+        - scout
+        - team
+        - fan
+        example: athlete
     LeaderboardCountryParam:
       name: country
       in: query
@@ -930,8 +1122,7 @@ components:
       description: Country filter
       schema:
         type: string
-        example: "USA"
-
+        example: USA
     LeaderboardLocationParam:
       name: location
       in: query
@@ -939,8 +1130,7 @@ components:
       description: City or location filter
       schema:
         type: string
-        example: "Chicago"
-
+        example: Chicago
     LeaderboardRegionParam:
       name: region
       in: query
@@ -948,8 +1138,7 @@ components:
       description: Geographical region or state filter
       schema:
         type: string
-        example: "Midwest"
-
+        example: Midwest
     LeaderboardSportParam:
       name: sport
       in: query
@@ -957,8 +1146,7 @@ components:
       description: Sport filter (matched against user's `favoriteSports`)
       schema:
         type: string
-        example: "Basketball"
-
+        example: Basketball
     LimitQueryParam:
       name: limit
       in: query
@@ -968,7 +1156,6 @@ components:
         type: integer
         default: 50
         example: 25
-
     PageQueryParam:
       name: page
       in: query
@@ -978,28 +1165,32 @@ components:
         type: integer
         default: 1
         example: 1
-
   schemas:
     User:
       type: object
       properties:
         id:
           type: string
-          example: "user_abc123"
+          example: user_abc123
         name:
           type: string
-          example: "Jane Doe"
+          example: Jane Doe
         username:
           type: string
-          example: "janedoe"
+          example: janedoe
         email:
           type: string
           format: email
-          example: "jane@example.com"
+          example: jane@example.com
         role:
           type: string
-          enum: [athlete, coach, scout, team, fan]
-          example: "athlete"
+          enum:
+          - athlete
+          - coach
+          - scout
+          - team
+          - fan
+          example: athlete
         level:
           type: integer
           example: 4
@@ -1008,126 +1199,137 @@ components:
           example: 1250
         country:
           type: string
-          example: "USA"
+          example: USA
         location:
           type: string
-          example: "New York"
+          example: New York
         region:
           type: string
-          example: "East Coast"
+          example: East Coast
         sport:
           type: string
-          example: "Basketball"
+          example: Basketball
         favoriteSports:
           type: array
           items:
             type: string
-          example: ["Basketball", "Tennis"]
+          example:
+          - Basketball
+          - Tennis
         followers:
           type: array
           items:
             type: string
-          example: ["user_xyz789"]
+          example:
+          - user_xyz789
         following:
           type: array
           items:
             type: string
-          example: ["user_456def"]
+          example:
+          - user_456def
         likedPosts:
           type: array
           items:
             type: string
-          example: ["post_1", "post_2"]
+          example:
+          - post_1
+          - post_2
         savedPosts:
           type: array
           items:
             type: string
-          example: ["post_5"]
+          example:
+          - post_5
         profilePic:
           type: string
           format: uri
-          example: "https://storage.catchme.live/profiles/user_abc123.jpg"
+          example: https://storage.catchme.live/profiles/user_abc123.jpg
         fcmToken:
           type: string
-          example: "eX_fcm_token_example"
+          example: eX_fcm_token_example
         createdAt:
           type: string
           format: date-time
-          example: "2026-01-15T08:30:00.000Z"
-
+          example: '2026-01-15T08:30:00.000Z'
     MinifiedUser:
       type: object
       properties:
         id:
           type: string
-          example: "user_abc123"
+          example: user_abc123
         name:
           type: string
-          example: "Jane Doe"
+          example: Jane Doe
         username:
           type: string
-          example: "janedoe"
+          example: janedoe
         role:
           type: string
-          example: "athlete"
+          example: athlete
         avatar:
           type: string
           format: uri
-          example: "https://storage.catchme.live/profiles/user_abc123.jpg"
-
+          example: https://storage.catchme.live/profiles/user_abc123.jpg
     UserSuggestion:
       type: object
       properties:
         id:
           type: string
-          example: "user_rec999"
+          example: user_rec999
         name:
           type: string
-          example: "Alex Johnson"
+          example: Alex Johnson
         username:
           type: string
-          example: "alexj"
+          example: alexj
         avatar:
           type: string
           format: uri
-          example: "https://storage.catchme.live/profiles/alexj.jpg"
+          example: https://storage.catchme.live/profiles/alexj.jpg
         role:
           type: string
-          example: "athlete"
+          example: athlete
         mutualCount:
           type: integer
           example: 5
-
     PostItem:
       type: object
       properties:
         id:
           type: string
-          example: "post_hl_01"
+          example: post_hl_01
         userId:
           type: string
-          example: "user_scout1"
+          example: user_scout1
         type:
           type: string
-          enum: [highlight, image, thought]
-          example: "highlight"
+          enum:
+          - highlight
+          - image
+          - thought
+          example: highlight
         mediaUrl:
           type: string
           format: uri
-          example: "https://storage.catchme.live/videos/hl01.mp4"
+          example: https://storage.catchme.live/videos/hl01.mp4
         caption:
           type: string
-          example: "Incredible step-back three!"
+          example: Incredible step-back three!
         tags:
           type: array
           items:
             type: string
-          example: ["basketball", "clutch"]
+          example:
+          - basketball
+          - clutch
         likes:
           type: array
           items:
             type: string
-          example: ["user_a", "user_b"]
+          example:
+          - user_a
+          - user_b
         views:
           type: integer
           example: 350
@@ -1137,75 +1339,81 @@ components:
         createdAt:
           type: string
           format: date-time
-          example: "2026-05-10T12:00:00.000Z"
-
+          example: '2026-05-10T12:00:00.000Z'
     FeedPosts:
       type: object
       properties:
         highlights:
           type: array
           items:
-            $ref: "#/components/schemas/PostItem"
+            $ref: '#/components/schemas/PostItem'
         images:
           type: array
           items:
-            $ref: "#/components/schemas/PostItem"
+            $ref: '#/components/schemas/PostItem'
         thoughts:
           type: array
           items:
-            $ref: "#/components/schemas/PostItem"
-
+            $ref: '#/components/schemas/PostItem'
     FeedResponse:
       type: object
       properties:
         posts:
-          $ref: "#/components/schemas/FeedPosts"
+          $ref: '#/components/schemas/FeedPosts'
         games:
           type: array
           items:
             type: string
-          example: ["game_event_101", "game_event_102"]
+          example:
+          - game_event_101
+          - game_event_102
         suggestedUsers:
           type: array
           items:
-            $ref: "#/components/schemas/UserSuggestion"
+            $ref: '#/components/schemas/UserSuggestion'
         upcomingGames:
           type: array
           items:
             type: string
-          example: ["game_event_201", "game_event_202"]
+          example:
+          - game_event_201
+          - game_event_202
         popular:
-          $ref: "#/components/schemas/FeedPosts"
-
+          $ref: '#/components/schemas/FeedPosts'
     GameEvent:
       type: object
       properties:
         id:
           type: string
-          example: "game_101"
+          example: game_101
         type:
           type: string
-          example: "game"
+          example: game
         sport:
           type: string
-          example: "football"
+          example: football
         title:
           type: string
-          example: "Arsenal vs Chelsea"
+          example: Arsenal vs Chelsea
         date:
           type: string
           format: date-time
-          example: "2026-05-10T15:00:00.000Z"
+          example: '2026-05-10T15:00:00.000Z'
         location:
           type: string
-          example: "Emirates Stadium"
+          example: Emirates Stadium
         currentState:
           type: object
           properties:
             status:
               type: string
-              enum: [upcoming, ongoing, ended, completed, finished]
-              example: "ongoing"
+              enum:
+              - upcoming
+              - ongoing
+              - ended
+              - completed
+              - finished
+              example: ongoing
             homeScore:
               type: integer
               example: 2
@@ -1225,7 +1433,7 @@ components:
                   type: string
                 name:
                   type: string
-                  example: "Arsenal"
+                  example: Arsenal
                 players:
                   type: array
                   items:
@@ -1237,123 +1445,121 @@ components:
                   type: string
                 name:
                   type: string
-                  example: "Chelsea"
+                  example: Chelsea
                 players:
                   type: array
                   items:
                     type: object
-
     GameStandardizeResponse:
       type: object
       properties:
         message:
           type: string
-          example: "Game standardized successfully"
+          example: Game standardized successfully
         game:
-          $ref: "#/components/schemas/GameEvent"
-
+          $ref: '#/components/schemas/GameEvent'
     GameSummaryResponse:
       type: object
       properties:
         summary:
           type: string
-          example: "In an exhilarating match at Emirates Stadium, Arsenal secured a 2-1 victory over Chelsea..."
+          example: In an exhilarating match at Emirates Stadium, Arsenal secured a
+            2-1 victory over Chelsea...
         updatedAt:
           type: integer
           example: 1756401000000
-
     ExportPdfResponse:
       type: object
       properties:
         downloadUrl:
           type: string
           format: uri
-          example: "http://localhost:5000/api/games/game_101/download"
-
+          example: http://localhost:5000/api/games/game_101/download
     EventItem:
       type: object
       properties:
         id:
           type: string
-          example: "event_001"
+          example: event_001
         type:
           type: string
-          example: "practice"
+          example: practice
         sport:
           type: string
-          example: "football"
+          example: football
         title:
           type: string
-          example: "Varsity Open Practice"
+          example: Varsity Open Practice
         date:
           type: string
           format: date-time
-          example: "2026-07-01T10:00:00.000Z"
+          example: '2026-07-01T10:00:00.000Z'
         location:
           type: string
-          example: "North Field"
+          example: North Field
         userId:
           type: string
-          example: "coach_mike"
-
+          example: coach_mike
     EngagementSignalRequest:
       type: object
       required:
-        - type
-        - targetId
+      - type
+      - targetId
       properties:
         type:
           type: string
-          enum: [dwell, click]
+          enum:
+          - dwell
+          - click
           description: Signal interaction type
-          example: "dwell"
+          example: dwell
         targetId:
           type: string
           description: ID of target post or game event
-          example: "post_abc123"
+          example: post_abc123
         value:
           type: integer
           description: Dwell time in milliseconds (when type is 'dwell')
           example: 4500
         targetType:
           type: string
-          enum: [post, game]
+          enum:
+          - post
+          - game
           default: post
           description: Target collection type
-          example: "post"
-
+          example: post
     EngagementSuccessResponse:
       type: object
       properties:
         success:
           type: boolean
           example: true
-
     LeaderboardUser:
       type: object
       properties:
         id:
           type: string
-          example: "user_rank1"
+          example: user_rank1
         name:
           type: string
-          example: "Jordan Miller"
+          example: Jordan Miller
         username:
           type: string
-          example: "jmiller23"
+          example: jmiller23
         profilePic:
           type: string
           format: uri
-          example: "https://storage.catchme.live/profiles/jmiller.jpg"
+          example: https://storage.catchme.live/profiles/jmiller.jpg
         role:
           type: string
-          example: "athlete"
+          example: athlete
         country:
           type: string
-          example: "USA"
+          example: USA
         location:
           type: string
-          example: "Chicago"
+          example: Chicago
         level:
           type: integer
           example: 12
@@ -1363,14 +1569,13 @@ components:
         score:
           type: integer
           example: 6280
-
     LeaderboardResponse:
       type: object
       properties:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/LeaderboardUser"
+            $ref: '#/components/schemas/LeaderboardUser'
         total:
           type: integer
           example: 142
@@ -1383,14 +1588,13 @@ components:
         totalPages:
           type: integer
           example: 6
-
     NotificationSendRequest:
       type: object
       properties:
         token:
           type: string
           description: Single device FCM token
-          example: "dK39...x9"
+          example: dK39...x9
         tokens:
           type: array
           items:
@@ -1401,7 +1605,9 @@ components:
           items:
             type: string
           description: Array of user IDs to resolve tokens for
-          example: ["user_101", "user_102"]
+          example:
+          - user_101
+          - user_102
         sendToAll:
           type: boolean
           description: Broadcast to all users
@@ -1411,22 +1617,21 @@ components:
           properties:
             title:
               type: string
-              example: "Match Starting Soon!"
+              example: Match Starting Soon!
             body:
               type: string
-              example: "Arsenal vs Chelsea kicks off in 15 minutes."
+              example: Arsenal vs Chelsea kicks off in 15 minutes.
             imageUrl:
               type: string
               format: uri
-              example: "https://storage.catchme.live/banners/match_101.png"
+              example: https://storage.catchme.live/banners/match_101.png
         data:
           type: object
           additionalProperties:
             type: string
           example:
-            type: "game_alert"
-            gameId: "game_101"
-
+            type: game_alert
+            gameId: game_101
     NotificationSendAllRequest:
       type: object
       properties:
@@ -1435,15 +1640,14 @@ components:
           properties:
             title:
               type: string
-              example: "Catch Me 2.0 is Live! 🚀"
+              example: Catch Me 2.0 is Live! 🚀
             body:
               type: string
-              example: "Check out new team leaderboards and AI summaries."
+              example: Check out new team leaderboards and AI summaries.
         data:
           type: object
           additionalProperties:
             type: string
-
     NotificationSendResponse:
       type: object
       properties:
@@ -1452,7 +1656,7 @@ components:
           example: true
         message:
           type: string
-          example: "Notification sent successfully."
+          example: Notification sent successfully.
         messageId:
           type: object
           properties:
@@ -1466,7 +1670,6 @@ components:
               type: array
               items:
                 type: object
-
     GlobalSearchResponse:
       type: object
       properties:
@@ -1513,70 +1716,173 @@ components:
                 type: string
               count:
                 type: integer
-
     SuccessMessageResponse:
       type: object
       properties:
         status:
           type: string
-          enum: ["SUCCESS"]
-          example: "SUCCESS"
+          enum:
+          - SUCCESS
+          example: SUCCESS
         message:
           type: string
-          example: "Operation completed successfully"
-
+          example: Operation completed successfully
     ErrorResponse:
       type: object
       properties:
         status:
           type: string
-          enum: ["FAILED"]
-          example: "FAILED"
+          enum:
+          - FAILED
+          example: FAILED
         error:
           type: string
-          example: "Resource not found"
+          example: Resource not found
         details:
           type: string
-          example: "Additional debug or error info"
-
+          example: Additional debug or error info
+    BatchIdsRequest:
+      type: object
+      required:
+      - ids
+      properties:
+        ids:
+          type: array
+          description: Array of document IDs to fetch
+          items:
+            type: string
+          example:
+          - 0qLgNmU9e3ZKLU5rbjEnuLaxCw33
+          - 0Qjy0VXKJmhOJZom5MoGCgzWmb23
+    MultiBatchRequest:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            type: string
+          example:
+          - user_id_1
+          - user_id_2
+        posts:
+          type: array
+          items:
+            type: string
+          example:
+          - post_id_1
+          - post_id_2
+        events:
+          type: array
+          items:
+            type: string
+          example:
+          - event_id_1
+        games:
+          type: array
+          items:
+            type: string
+          example:
+          - game_id_1
+    BatchMeta:
+      type: object
+      properties:
+        totalRequested:
+          type: integer
+          example: 2
+        cachedCount:
+          type: integer
+          example: 2
+        fetchedFromDbCount:
+          type: integer
+          example: 0
+    BatchResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - SUCCESS
+          example: SUCCESS
+        count:
+          type: integer
+          example: 2
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          $ref: '#/components/schemas/BatchMeta'
+    MultiBatchResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - SUCCESS
+          example: SUCCESS
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            posts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Post'
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/Event'
+            games:
+              type: array
+              items:
+                $ref: '#/components/schemas/Event'
+        meta:
+          type: object
+          properties:
+            cachedCount:
+              type: integer
+              example: 5
+            fetchedFromDbCount:
+              type: integer
+              example: 0
   responses:
     400BadRequest:
       description: Invalid or missing request parameters or body
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: "FAILED"
-            error: "Missing required fields"
-
+            status: FAILED
+            error: Missing required fields
     404NotFound:
       description: Requested entity not found
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: "FAILED"
-            error: "User not found"
-
+            status: FAILED
+            error: User not found
     500InternalServerError:
       description: Internal server or database error
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: "FAILED"
-            error: "Failed to process request"
-            details: "Firestore timeout"
-
+            status: FAILED
+            error: Failed to process request
+            details: Firestore timeout
     503ServiceUnavailable:
       description: Background search index not yet ready
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: "FAILED"
-            error: "Search index not ready. Please try again later."
+            status: FAILED
+            error: Search index not ready. Please try again later.

@@ -2,10 +2,19 @@ const { Firestore } = require("../utils/db");
 const { db, admin } = require("../config/firebase");
 const { GraphService } = require("../services/graph.service");
 const localSearchService = require("../services/localSearch.service");
+const { Cache } = require("../utils/cache");
 
 const getUsers = async (req, res) => {
   try {
+    // 1. Check Redis cache for users list
+    const cachedUsers = await Cache.get("users:all_list");
+    if (cachedUsers && Array.isArray(cachedUsers)) {
+      return res.status(200).json({ status: "SUCCESS", data: cachedUsers });
+    }
+
     const users = await Firestore.getAll("users");
+    // Cache for 15 minutes (900s)
+    await Cache.set("users:all_list", users, 900);
 
     res.status(200).json({ status: "SUCCESS", data: users });
   } catch (err) {
@@ -16,11 +25,24 @@ const getUsers = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
-    const user = await Firestore.getById("users", req.params.id);
+    const userId = req.params.id;
+    const cacheKey = `user:profile:${userId}`;
+
+    // 1. Check Redis cache
+    const cachedUser = await Cache.get(cacheKey);
+    if (cachedUser) {
+      return res.status(200).json({ status: "SUCCESS", ...cachedUser });
+    }
+
+    // 2. Fetch from Firestore on cache miss
+    const user = await Firestore.getById("users", userId);
 
     if (!user) {
       return res.status(404).json({ status: "FAILED", error: "User not found" });
     }
+
+    // 3. Cache for 1 hour (3600s)
+    await Cache.set(cacheKey, user, 3600);
 
     res.status(200).json({ status: "SUCCESS", ...user });
   } catch (err) {
@@ -153,6 +175,16 @@ const deleteUser = async (req, res) => {
     batch.delete(db.collection("users").doc(id));
 
     await batch.commit();
+
+    // Invalidate Redis caches
+    await Promise.all([
+      Cache.del(`user:profile:${id}`),
+      Cache.del(`suggestions:${id}:10`),
+      Cache.del(`feed:${id}:all:A`),
+      Cache.del(`feed:${id}:all:B`),
+      Cache.del("users:all_list"),
+      Cache.del("suggestions:top_athletes_and_teams"),
+    ]);
 
     res
       .status(200)

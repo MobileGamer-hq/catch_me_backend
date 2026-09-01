@@ -37,6 +37,7 @@ const eventRoutes = require("./routes/eventRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const postRoutes = require("./routes/postRoutes");
 const engagementRoutes = require("./routes/engagementRoutes");
+const batchRoutes = require("./routes/batchRoutes");
 
 // Register Routes
 app.use("/api/users", userRoutes);
@@ -48,6 +49,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/engage", engagementRoutes);
+app.use("/api/batch", batchRoutes);
 
 // 404 Catch-All
 app.use((req, res) => {

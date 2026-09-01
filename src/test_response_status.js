@@ -190,6 +190,34 @@ async function runTests() {
     (body) => Array.isArray(body.data)
   );
 
+  // 14. Users Batch Fetch (Redis-first)
+  await testEndpoint(
+    "Users Batch Fetch - Valid List",
+    "/api/users/batch",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: ["0qLgNmU9e3ZKLU5rbjEnuLaxCw33"] }),
+    },
+    200,
+    "SUCCESS",
+    (body) => Array.isArray(body.data)
+  );
+
+  // 15. Universal Batch Fetch (Redis-first)
+  await testEndpoint(
+    "Universal Multi-Batch Fetch",
+    "/api/batch",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ users: ["0qLgNmU9e3ZKLU5rbjEnuLaxCw33"], posts: [] }),
+    },
+    200,
+    "SUCCESS",
+    (body) => body.data?.users !== undefined
+  );
+
   server.close();
 
   console.log(`\n---------------------------------------`);

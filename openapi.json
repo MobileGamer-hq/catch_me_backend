@@ -67,6 +67,10 @@
     {
       "name": "Search",
       "description": "Multi-entity search across users, teams, and hashtags"
+    },
+    {
+      "name": "Batch",
+      "description": "High-performance Redis-first batch entity lookups (users, posts, events, games) preventing client-side Firestore read spikes"
     }
   ],
   "paths": {
@@ -1335,6 +1339,250 @@
           }
         }
       }
+    },
+    "/api/batch": {
+      "post": {
+        "tags": [
+          "Batch"
+        ],
+        "summary": "Universal Multi-Entity Batch Fetch",
+        "description": "Fetches multiple entities (users, posts, events, games) in a single request. Utilizes Redis-first caching (1-hour TTL). Only IDs that are cache misses are fetched from Firestore and cached automatically.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultiBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch fetch results with cache performance metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/batch/{type}": {
+      "post": {
+        "tags": [
+          "Batch"
+        ],
+        "summary": "Type-Specific Batch Fetch",
+        "description": "Batch fetches items for a given entity type (`users`, `posts`, `events`, `games`) by ID. Checks Upstash Redis cache first (1-hour TTL); fetches missing items from Firestore and populates Redis.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Entity type to fetch",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "users",
+                "posts",
+                "events",
+                "games"
+              ],
+              "example": "users"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIdsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of resolved entities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/users/batch": {
+      "post": {
+        "tags": [
+          "Users",
+          "Batch"
+        ],
+        "summary": "Batch Get Users (Redis-first)",
+        "description": "Retrieves multiple user profiles by array of IDs. Checks Redis `user:profile:{id}` (1-hour TTL) before querying Firestore.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIdsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of user profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/posts/batch": {
+      "post": {
+        "tags": [
+          "Posts",
+          "Batch"
+        ],
+        "summary": "Batch Get Posts (Redis-first)",
+        "description": "Retrieves multiple posts by array of IDs. Checks Redis `post:{id}` (1-hour TTL) before querying Firestore.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIdsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of post objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/events/batch": {
+      "post": {
+        "tags": [
+          "Events",
+          "Batch"
+        ],
+        "summary": "Batch Get Events (Redis-first)",
+        "description": "Retrieves multiple events by array of IDs. Checks Redis `event:{id}` (1-hour TTL) before querying Firestore.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIdsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of event objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/games/batch": {
+      "post": {
+        "tags": [
+          "Games",
+          "Batch"
+        ],
+        "summary": "Batch Get Games (Redis-first)",
+        "description": "Retrieves multiple games by array of IDs. Checks Redis `event:{id}` (1-hour TTL) before querying Firestore.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIdsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of game objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2151,7 +2399,7 @@
             "properties": {
               "title": {
                 "type": "string",
-                "example": "Catch Me 2.0 is Live! \ud83d\ude80"
+                "example": "Catch Me 2.0 is Live! 🚀"
               },
               "body": {
                 "type": "string",
@@ -2273,6 +2521,13 @@
       "SuccessMessageResponse": {
         "type": "object",
         "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUCCESS"
+            ],
+            "example": "SUCCESS"
+          },
           "message": {
             "type": "string",
             "example": "Operation completed successfully"
@@ -2282,6 +2537,13 @@
       "ErrorResponse": {
         "type": "object",
         "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "FAILED"
+            ],
+            "example": "FAILED"
+          },
           "error": {
             "type": "string",
             "example": "Resource not found"
@@ -2289,6 +2551,164 @@
           "details": {
             "type": "string",
             "example": "Additional debug or error info"
+          }
+        }
+      },
+      "BatchIdsRequest": {
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "description": "Array of document IDs to fetch",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "0qLgNmU9e3ZKLU5rbjEnuLaxCw33",
+              "0Qjy0VXKJmhOJZom5MoGCgzWmb23"
+            ]
+          }
+        }
+      },
+      "MultiBatchRequest": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "user_id_1",
+              "user_id_2"
+            ]
+          },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "post_id_1",
+              "post_id_2"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "event_id_1"
+            ]
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "game_id_1"
+            ]
+          }
+        }
+      },
+      "BatchMeta": {
+        "type": "object",
+        "properties": {
+          "totalRequested": {
+            "type": "integer",
+            "example": 2
+          },
+          "cachedCount": {
+            "type": "integer",
+            "example": 2
+          },
+          "fetchedFromDbCount": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "BatchResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUCCESS"
+            ],
+            "example": "SUCCESS"
+          },
+          "count": {
+            "type": "integer",
+            "example": 2
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/BatchMeta"
+          }
+        }
+      },
+      "MultiBatchResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUCCESS"
+            ],
+            "example": "SUCCESS"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "users": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/User"
+                }
+              },
+              "posts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              },
+              "games": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "cachedCount": {
+                "type": "integer",
+                "example": 5
+              },
+              "fetchedFromDbCount": {
+                "type": "integer",
+                "example": 0
+              }
+            }
           }
         }
       }
@@ -2302,6 +2722,7 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
+              "status": "FAILED",
               "error": "Missing required fields"
             }
           }
@@ -2315,6 +2736,7 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
+              "status": "FAILED",
               "error": "User not found"
             }
           }
@@ -2328,6 +2750,7 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
+              "status": "FAILED",
               "error": "Failed to process request",
               "details": "Firestore timeout"
             }
@@ -2342,6 +2765,7 @@
               "$ref": "#/components/schemas/ErrorResponse"
             },
             "example": {
+              "status": "FAILED",
               "error": "Search index not ready. Please try again later."
             }
           }

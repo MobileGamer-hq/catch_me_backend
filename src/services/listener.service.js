@@ -1,6 +1,7 @@
 const { db } = require("../config/firebase");
 const { notifyFollowers } = require("./notification.service");
 const gameFinalizationService = require("./gameFinalization.service");
+const { Cache } = require("../utils/cache");
 
 /**
  * Distributed lock to prevent multiple instances from running the same logic twice.
@@ -58,51 +59,26 @@ function watchPosts() {
           // 1. Send Notifications
           await notifyFollowers("post", userId, postId);
 
-          // 2. Hybrid Fan-out (Push to Feed)
-          // Only push for authors with < 1000 followers to save writes
+          // 2. Redis Feed Cache Invalidation (Replaces expensive Firestore subcollection writes)
           try {
             const authorDoc = await db.collection("users").doc(userId).get();
             const author = authorDoc.data();
 
-            if (!author) {
-              console.warn(`Author ${userId} not found for post ${postId}`);
-              return;
-            }
-
-            // Default to 0 if field missing
-            const followerCount = author.followers?.length || 0;
-
-            if (followerCount < 1000 && author.followers) {
-              const batch = db.batch();
-              let opCount = 0;
-
+            if (author && author.followers && Array.isArray(author.followers) && author.followers.length > 0) {
+              const evictionPromises = [];
               for (const followerId of author.followers) {
-                const feedRef = db
-                  .collection("users")
-                  .doc(followerId)
-                  .collection("feedItems")
-                  .doc(postId);
-                batch.set(feedRef, {
-                  postId: postId,
-                  authorId: userId,
-                  createdAt: post.createdAt || new Date().toISOString(),
-                  type: "post",
-                });
-                opCount++;
-
-                if (opCount >= 450) {
-                  await batch.commit();
-                  opCount = 0;
-                }
+                evictionPromises.push(Cache.del(`feed:${followerId}:all:A`));
+                evictionPromises.push(Cache.del(`feed:${followerId}:all:B`));
+                evictionPromises.push(Cache.del(`feed:granular:${followerId}:posts:all:all:A`));
+                evictionPromises.push(Cache.del(`feed:granular:${followerId}:posts:all:all:B`));
               }
-
-              if (opCount > 0) await batch.commit();
+              await Promise.all(evictionPromises);
               console.log(
-                `Pushed post ${postId} to ${author.followers.length} feeds.`,
+                `[Listener] Evicted Redis feed caches for ${author.followers.length} followers of post ${postId}.`,
               );
             }
           } catch (err) {
-            console.error("Fan-out failed:", err);
+            console.error("Feed cache invalidation failed:", err);
           }
         });
       }

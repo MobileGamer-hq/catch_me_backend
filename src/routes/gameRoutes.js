@@ -12,8 +12,14 @@ const {
   deleteSummary
 } = require("../controllers/gameController");
 
+const { getBatchByType } = require("../controllers/batchController");
+
 // Games
 router.get("/", getGames);
+router.post("/batch", (req, res, next) => {
+  req.params.type = "games";
+  return getBatchByType(req, res, next);
+}); // batch get games by IDs (Redis-first)
 router.get("/:id", getGame);
 router.post("/:id/standardize", standardizeGame);
 router.post("/:id/end", endGame);

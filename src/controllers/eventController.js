@@ -1,5 +1,6 @@
 const { db, admin } = require("../config/firebase");
 const localSearchService = require("../services/localSearch.service");
+const { Cache } = require("../utils/cache");
 
 const eventsCollection = db.collection("events");
 
@@ -15,6 +16,13 @@ const updateEvent = async (req, res) => {
     }
 
     await eventRef.update(req.body);
+
+    // Invalidate Redis cache
+    await Promise.all([
+      Cache.del(`event:${eventId}`),
+      Cache.del("events:all_list"),
+    ]);
+
     res.status(200).json({ status: "SUCCESS", message: "Event updated successfully" });
   } catch (error) {
     res
@@ -65,6 +73,12 @@ const deleteEvent = async (req, res) => {
 
     await batch.commit();
 
+    // Invalidate Redis caches
+    await Promise.all([
+      Cache.del(`event:${id}`),
+      Cache.del("events:all_list"),
+    ]);
+
     res.status(200).json({ status: "SUCCESS", message: "Event and its traces deleted successfully" });
   } catch (error) {
     console.error("Error deleting event:", error);
@@ -77,11 +91,26 @@ const deleteEvent = async (req, res) => {
 // Get Event by ID
 const getEventById = async (req, res) => {
   try {
-    const doc = await eventsCollection.doc(req.params.id).get();
+    const eventId = req.params.id;
+    const cacheKey = `event:${eventId}`;
+
+    // 1. Check Redis cache
+    const cachedEvent = await Cache.get(cacheKey);
+    if (cachedEvent) {
+      return res.status(200).json({ status: "SUCCESS", ...cachedEvent });
+    }
+
+    // 2. Query Firestore on cache miss
+    const doc = await eventsCollection.doc(eventId).get();
     if (!doc.exists) {
       return res.status(404).json({ status: "FAILED", error: "Event not found" });
     }
-    res.status(200).json({ status: "SUCCESS", ...doc.data() });
+
+    const eventData = { id: doc.id, ...doc.data() };
+    // Cache in Redis for 1 hour (3600s)
+    await Cache.set(cacheKey, eventData, 3600);
+
+    res.status(200).json({ status: "SUCCESS", ...eventData });
   } catch (error) {
     res
       .status(500)
@@ -92,8 +121,18 @@ const getEventById = async (req, res) => {
 // Get All Events
 const getAllEvents = async (_req, res) => {
   try {
+    // 1. Check Redis cache
+    const cachedEvents = await Cache.get("events:all_list");
+    if (cachedEvents && Array.isArray(cachedEvents)) {
+      return res.status(200).json({ status: "SUCCESS", data: cachedEvents });
+    }
+
     const snapshot = await eventsCollection.get();
-    const events = snapshot.docs.map((doc) => doc.data());
+    const events = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    // Cache for 15 minutes (900s)
+    await Cache.set("events:all_list", events, 900);
+
     res.status(200).json({ status: "SUCCESS", data: events });
   } catch (error) {
     res

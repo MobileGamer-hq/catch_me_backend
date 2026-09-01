@@ -1,4 +1,5 @@
 const { Firestore } = require("../utils/db");
+const { Cache } = require("../utils/cache");
 
 /* ═══════════════════════════════════════════════════════════════
    CONFIGURATION & WEIGHTS
@@ -1021,9 +1022,19 @@ class FeedSystem {
     }
 
     try {
+      // 1. Check Redis user profile cache
+      const cached = await Cache.get(`user:profile:${userId}`);
+      if (cached) {
+        this.userCache.set(userId, cached);
+        return cached;
+      }
+
+      // 2. Fetch from Firestore on cache miss
       const user = await Firestore.getById("users", userId);
       if (user) {
         this.userCache.set(userId, user);
+        // Cache in Redis for 1 hour
+        await Cache.set(`user:profile:${userId}`, user, 3600);
       }
       return user;
     } catch (error) {
