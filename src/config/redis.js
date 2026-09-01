@@ -56,5 +56,8 @@ try {
 
 module.exports = {
   redis,
-  isRedisAvailable: () => isRedisAvailable,
+  isRedisAvailable: () => {
+    if (!redis) return false;
+    return ["ready", "connect", "connecting"].includes(redis.status);
+  },
 };
