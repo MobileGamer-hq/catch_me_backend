@@ -79,6 +79,10 @@
     {
       "name": "Scout & Organizer",
       "description": "Tablet-friendly interactive web view, daily performance summaries, official match verification sheets, and athlete scouting dossiers in PDF/CSV formats."
+    },
+    {
+      "name": "Audit",
+      "description": "Automated weekly data validation pipeline, role-based model constraints enforcement, RTDB issue reporting, and one-time actionable user notification dispatching with retry on failure."
     }
   ],
   "paths": {
@@ -197,11 +201,11 @@
           "400": {
             "$ref": "#/components/responses/400BadRequest"
           },
-          "503": {
-            "$ref": "#/components/responses/503ServiceUnavailable"
-          },
           "500": {
             "$ref": "#/components/responses/500InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
           }
         }
       }
@@ -734,8 +738,8 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Summary successfully created",
+          "200": {
+            "description": "Existing summary retrieved from cache",
             "content": {
               "application/json": {
                 "schema": {
@@ -744,8 +748,8 @@
               }
             }
           },
-          "200": {
-            "description": "Existing summary retrieved from cache",
+          "201": {
+            "description": "Summary successfully created",
             "content": {
               "application/json": {
                 "schema": {
@@ -919,11 +923,11 @@
           "400": {
             "$ref": "#/components/responses/400BadRequest"
           },
-          "503": {
-            "$ref": "#/components/responses/503ServiceUnavailable"
-          },
           "500": {
             "$ref": "#/components/responses/500InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
           }
         }
       }
@@ -1085,11 +1089,11 @@
           "400": {
             "$ref": "#/components/responses/400BadRequest"
           },
-          "503": {
-            "$ref": "#/components/responses/503ServiceUnavailable"
-          },
           "500": {
             "$ref": "#/components/responses/500InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/503ServiceUnavailable"
           }
         }
       }
@@ -2355,6 +2359,166 @@
           }
         }
       }
+    },
+    "/api/audit/run": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Run Weekly Data Audit",
+        "description": "Triggers a comprehensive read-only scan of user-generated data in Firestore (users, posts, events, chats), validates schema & role completion constraints, writes the report to RTDB (deleting previous week's report), and sends one-time notifications (with retry on failure) to non-compliant users.",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, runs the audit without writing to RTDB or dispatching notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit execution report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditReportResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Run Weekly Data Audit (GET Alias)",
+        "description": "Browser-friendly alias to trigger the weekly data audit or dry-run.",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, runs the audit without writing to RTDB or dispatching notifications."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit execution report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditReportResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/audit/report": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Get Latest Audit Report",
+        "description": "Retrieves the current active weekly data audit report from Firebase Realtime Database (audit_issues/).",
+        "responses": {
+          "200": {
+            "description": "Current active audit report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditReportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active audit report found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Clear Active Audit Report",
+        "description": "Deletes and clears the active weekly audit report from Realtime Database.",
+        "responses": {
+          "200": {
+            "description": "Report cleared successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "SUCCESS"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Audit report deleted from Realtime Database successfully."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/audit/history": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Get Audit Notification History",
+        "description": "Returns the persistent notification history mapping (audit_notification_history/) from Realtime Database, showing delivered vs failed notification retry statuses.",
+        "responses": {
+          "200": {
+            "description": "Notification dispatch history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditNotificationHistoryResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3452,19 +3616,19 @@
               "posts": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/Post"
+                  "$ref": "#/components/schemas/PostItem"
                 }
               },
               "events": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/Event"
+                  "$ref": "#/components/schemas/EventItem"
                 }
               },
               "games": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/Event"
+                  "$ref": "#/components/schemas/EventItem"
                 }
               }
             }
@@ -3729,6 +3893,279 @@
                 }
               }
             }
+          }
+        }
+      },
+      "AuditReportResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "SUCCESS"
+          },
+          "message": {
+            "type": "string",
+            "example": "Weekly data audit executed and persisted to Realtime Database successfully."
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "auditId": {
+                "type": "string",
+                "example": "audit_1788352169467"
+              },
+              "timestamp": {
+                "type": "string",
+                "example": "2026-09-02T12:29:29.465Z"
+              },
+              "isDryRun": {
+                "type": "boolean",
+                "example": false
+              },
+              "totalScanned": {
+                "type": "object",
+                "properties": {
+                  "users": {
+                    "type": "integer",
+                    "example": 90
+                  },
+                  "posts": {
+                    "type": "integer",
+                    "example": 53
+                  },
+                  "events": {
+                    "type": "integer",
+                    "example": 17
+                  },
+                  "chats": {
+                    "type": "integer",
+                    "example": 19
+                  }
+                }
+              },
+              "issueCounts": {
+                "type": "object",
+                "properties": {
+                  "malformedIds": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "incompleteUsers": {
+                    "type": "integer",
+                    "example": 63
+                  },
+                  "flaggedContent": {
+                    "type": "integer",
+                    "example": 57
+                  },
+                  "relationalAnomalies": {
+                    "type": "integer",
+                    "example": 10
+                  },
+                  "totalIssues": {
+                    "type": "integer",
+                    "example": 130
+                  }
+                }
+              },
+              "notificationSummary": {
+                "type": "object",
+                "properties": {
+                  "attempted": {
+                    "type": "integer",
+                    "example": 63
+                  },
+                  "sent": {
+                    "type": "integer",
+                    "example": 60
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "example": 3
+                  },
+                  "skippedAlreadyNotified": {
+                    "type": "integer",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          },
+          "malformed_ids": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "incomplete_users": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "flagged_content": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "relational_anomalies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "AuditNotificationHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "SUCCESS"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "example": "q3JbyQ6TxLdYQjmHqI5rAKcaTsp2"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "sent",
+                    "failed"
+                  ],
+                  "example": "sent"
+                },
+                "sentAt": {
+                  "type": "string",
+                  "example": "2026-09-02T12:29:29.465Z"
+                },
+                "lastAttemptAt": {
+                  "type": "string",
+                  "example": "2026-09-02T12:29:29.465Z"
+                },
+                "missingFields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "roleData.position",
+                    "height"
+                  ]
+                },
+                "hadFcmToken": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "post_hl_01"
+          },
+          "userId": {
+            "type": "string",
+            "example": "user_scout1"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "highlight",
+              "image",
+              "thought"
+            ],
+            "example": "highlight"
+          },
+          "mediaUrl": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://storage.catchme.live/videos/hl01.mp4"
+          },
+          "caption": {
+            "type": "string",
+            "example": "Incredible step-back three!"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "basketball",
+              "clutch"
+            ]
+          },
+          "likes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "user_a",
+              "user_b"
+            ]
+          },
+          "views": {
+            "type": "integer",
+            "example": 350
+          },
+          "finalScore": {
+            "type": "number",
+            "example": 142.5
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-10T12:00:00.000Z"
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "event_001"
+          },
+          "type": {
+            "type": "string",
+            "example": "practice"
+          },
+          "sport": {
+            "type": "string",
+            "example": "football"
+          },
+          "title": {
+            "type": "string",
+            "example": "Varsity Open Practice"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-07-01T10:00:00.000Z"
+          },
+          "location": {
+            "type": "string",
+            "example": "North Field"
+          },
+          "userId": {
+            "type": "string",
+            "example": "coach_mike"
           }
         }
       }

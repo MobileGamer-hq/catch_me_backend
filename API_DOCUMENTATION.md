@@ -268,18 +268,53 @@ High-performance Redis-first batch fetching preventing client-side Firestore rea
 - **Batch Games**: `POST /api/games/batch` with `{ "ids": ["id1", "id2"] }`
 - **Multi-Collection Batch**: `POST /api/batch` with `{ "users": [...], "posts": [...], "events": [...], "games": [...] }`
 
+## 11. Data Audit Pipeline & Compliance Suite (`/api/audit`)
+
+Automated weekly data validation pipeline, role-based model constraints enforcement, RTDB issue reporting, and one-time actionable user notification dispatching with failure retry.
+
+### Run Weekly Data Audit
+
+- **Method**: `POST` or `GET`
+- **Endpoint**: `/run`
+- **Query Parameters**: `dryRun` (`true` | `false`, default: `false`).
+- **Description**: Scans user-generated data across Firestore (`users`, `posts`, `events`, `chats`), validates schema & role completion constraints, writes the report to RTDB (`audit_issues/`), and sends one-time notifications to non-compliant users (retrying previously failed deliveries).
+
+### Get Latest Audit Report
+
+- **Method**: `GET`
+- **Endpoint**: `/report`
+- **Description**: Retrieves the active weekly audit report JSON directly from Firebase Realtime Database (`audit_issues/`).
+
+### Get Audit Notification History
+
+- **Method**: `GET`
+- **Endpoint**: `/history`
+- **Description**: Returns persistent notification history mapping (`audit_notification_history/`) showing delivered vs failed notification retry statuses.
+
+### Clear Active Audit Report
+
+- **Method**: `DELETE`
+- **Endpoint**: `/report`
+- **Description**: Clears the active weekly audit report from Realtime Database.
+
 ---
 
-## 11. Background Jobs & Scheduled Tasks
+## 12. Background Jobs & Scheduled Tasks
 
 The backend runs multiple background operations to maintain system health, engagement tracking, and user recommendations.
 
+- **Weekly Data Audit (`weeklyAudit.js`)**:
+  - **Schedule**: Every Sunday at midnight (`0 0 * * 0`).
+  - **Description**: Executes comprehensive data integrity audit across primary collections, updates RTDB `audit_issues/`, and notifies non-compliant users with failure retry.
 - **Engagement Flusher (`flushEngagements.js`)**:
   - **Schedule**: Every 30 minutes.
   - **Description**: Flushes temporary in-memory engagement/view data into Firestore. Recalculates weighted engagement scores for posts based on views, likes, comments, shares, and saves.
 - **Tag Sync (`tagSync.js`)**:
   - **Schedule**: Daily at midnight.
   - **Description**: Synchronizes tag data systematically across the platform.
+- **Notification Cleanup (`cleanupNotifications.js`)**:
+  - **Schedule**: Daily at 12:00 PM.
+  - **Description**: Prunes oldest notifications for users with $\ge 30$ entries.
 - **Compute Similarity (`computeSimilarity.js`)**:
   - **Schedule**: Batch / Nightly job.
   - **Description**: Collaborative filtering task that runs iteratively over users to compute Jaccard Similiary index based on intersecting `likedPosts` helping to fuel recommendations.

@@ -688,6 +688,18 @@ Or in error cases:
 
 ---
 
+### Data Audit & Compliance Routes (`/api/audit`)
+*Router*: `src/routes/auditRoutes.js` | *Controller*: `src/controllers/auditController.js`
+
+| Method | Endpoint | Description | Auth Req | Request Body / Query | Response Structure |
+|---|---|---|---|---|---|
+| `POST` / `GET` | `/api/audit/run` | Execute weekly data audit across users, posts, events, chats | Optional | `query: { dryRun?: boolean }` | `{ status: "SUCCESS", message: "...", meta: {...}, malformed_ids: {...}, incomplete_users: {...}, flagged_content: {...}, relational_anomalies: {...} }` |
+| `GET` | `/api/audit/report` | Fetch latest active weekly audit report from Realtime Database | Optional | None | `{ status: "SUCCESS", meta: {...}, malformed_ids: {...}, ... }` |
+| `GET` | `/api/audit/history` | Retrieve user notification history with delivered vs failed retry status | Optional | None | `{ status: "SUCCESS", data: { [userId]: { status, sentAt, ... } } }` |
+| `DELETE`| `/api/audit/report` | Delete and clear current weekly audit report from Realtime Database | Optional | None | `{ status: "SUCCESS", message: "Audit report deleted..." }` |
+
+---
+
 ## 6. Core Services Deep Dive
 
 ### Feed Ranking & Recommendation Engine (`src/services/feed.service.js`)
@@ -842,6 +854,7 @@ Managed by `node-cron` in `src/jobs/cron.js`:
 
 | Job File | Schedule | Interval / Time | Operations Performed |
 |---|---|---|---|
+| `weeklyAudit.js` | `0 0 * * 0` | Weekly on Sunday at Midnight | Executes comprehensive schema and role constraint audit across `users`, `posts`, `events`, and `chats`. Cleans up prior report, saves current report to RTDB `audit_issues/`, and dispatches one-time profile completion alerts with failure retry. |
 | `calculateXP.js` | `0 1 * * *` | Daily at 1:00 AM | Iterates all users. Calculates XP based on `(games * 25) + (posts * 10) + (followers * 0.1)`. Assigns level (`rookie`, `prospect`, `starter`, `allStar`, `mvp`, `goat`) and `nextLevelXP`. |
 | `flushEngagements.js` | `*/30 * * * *` | Every 30 Minutes | Flushes in-memory delta buffers (`tempEngagementScores.json` and `tempViewScores.json`) to Firestore via `FieldValue.increment`. Recalculates weighted engagement scores for active posts. |
 | `tagSync.js` | `0 0 * * *` | Daily at Midnight | Extracts all unique hashtags from posts and users, building an aggregate tag frequency catalog. |

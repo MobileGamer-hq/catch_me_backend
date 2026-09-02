@@ -40,6 +40,7 @@ const engagementRoutes = require("./routes/engagementRoutes");
 const batchRoutes = require("./routes/batchRoutes");
 const qrRoutes = require("./routes/qrRoutes");
 const scoutRoutes = require("./routes/scoutRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 // Register Routes
 app.use("/api/users", userRoutes);
@@ -55,6 +56,7 @@ app.use("/api/batch", batchRoutes);
 app.use("/api/qr", qrRoutes);
 app.use("/api/scout", scoutRoutes);
 app.use("/api/organizer", scoutRoutes);
+app.use("/api/audit", auditRoutes);
 
 // 404 Catch-All
 app.use((req, res) => {

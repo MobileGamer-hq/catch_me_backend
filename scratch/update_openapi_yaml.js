@@ -1,0 +1,263 @@
+const fs = require("fs");
+const path = require("path");
+
+const rootDir = path.join(__dirname, "..");
+const files = [
+  path.join(rootDir, "openapi.yaml"),
+  path.join(rootDir, "documentation/openapi.yaml"),
+];
+
+const auditTag = `- name: Audit
+  description: Weekly user-generated data validation, role-based model constraints enforcement, RTDB issue reporting, and one-time profile completion alerts.
+`;
+
+const auditPaths = `  /api/audit/run:
+    post:
+      tags:
+      - Audit
+      summary: Run Weekly Data Audit
+      description: Manually triggers the full data audit across Firestore collections (\`users\`, \`posts\`, \`events\`, \`chats\`), validates schema & role completion constraints, writes the report to RTDB (deleting prior week's report), and dispatches one-time alerts with failure retry.
+      parameters:
+      - name: dryRun
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+        description: If true, runs the audit without writing to RTDB or dispatching notifications.
+      responses:
+        '200':
+          description: Audit execution report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditReportResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+    get:
+      tags:
+      - Audit
+      summary: Run Weekly Data Audit (GET Alias)
+      description: Browser-friendly alias to trigger weekly data audit or dry-run.
+      parameters:
+      - name: dryRun
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+        description: If true, runs the audit without writing to RTDB or dispatching notifications.
+      responses:
+        '200':
+          description: Audit execution report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditReportResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/audit/report:
+    get:
+      tags:
+      - Audit
+      summary: Get Latest Audit Report
+      description: Fetches the current active weekly data audit report directly from Firebase Realtime Database (\`audit_issues/\`).
+      responses:
+        '200':
+          description: Current active audit report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditReportResponse'
+        '404':
+          description: No active audit report found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+    delete:
+      tags:
+      - Audit
+      summary: Clear Active Audit Report
+      description: Clears and removes the active weekly audit report from Realtime Database.
+      responses:
+        '200':
+          description: Audit report cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: SUCCESS
+                  message:
+                    type: string
+                    example: Audit report deleted from Realtime Database successfully.
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+  /api/audit/history:
+    get:
+      tags:
+      - Audit
+      summary: Get Audit Notification History
+      description: Retrieves the persistent notification history mapping (\`audit_notification_history/\`) from Realtime Database, showing delivered vs failed notification retry statuses.
+      responses:
+        '200':
+          description: Notification dispatch history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditNotificationHistoryResponse'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+`;
+
+const auditSchemas = `    AuditReportResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: SUCCESS
+        message:
+          type: string
+          example: Weekly data audit executed and persisted to Realtime Database successfully.
+        meta:
+          type: object
+          properties:
+            auditId:
+              type: string
+              example: audit_1788352169467
+            timestamp:
+              type: string
+              example: '2026-09-02T12:29:29.465Z'
+            isDryRun:
+              type: boolean
+              example: false
+            totalScanned:
+              type: object
+              properties:
+                users:
+                  type: integer
+                  example: 90
+                posts:
+                  type: integer
+                  example: 53
+                events:
+                  type: integer
+                  example: 17
+                chats:
+                  type: integer
+                  example: 19
+            issueCounts:
+              type: object
+              properties:
+                malformedIds:
+                  type: integer
+                  example: 0
+                incompleteUsers:
+                  type: integer
+                  example: 63
+                flaggedContent:
+                  type: integer
+                  example: 57
+                relationalAnomalies:
+                  type: integer
+                  example: 10
+                totalIssues:
+                  type: integer
+                  example: 130
+            notificationSummary:
+              type: object
+              properties:
+                attempted:
+                  type: integer
+                  example: 63
+                sent:
+                  type: integer
+                  example: 60
+                failed:
+                  type: integer
+                  example: 3
+                skippedAlreadyNotified:
+                  type: integer
+                  example: 0
+        malformed_ids:
+          type: object
+          additionalProperties:
+            type: object
+        incomplete_users:
+          type: object
+          additionalProperties:
+            type: object
+        flagged_content:
+          type: object
+          additionalProperties:
+            type: object
+        relational_anomalies:
+          type: object
+          additionalProperties:
+            type: object
+    AuditNotificationHistoryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: SUCCESS
+        data:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              userId:
+                type: string
+                example: q3JbyQ6TxLdYQjmHqI5rAKcaTsp2
+              status:
+                type: string
+                enum:
+                - sent
+                - failed
+                example: sent
+              sentAt:
+                type: string
+                example: '2026-09-02T12:29:29.465Z'
+              lastAttemptAt:
+                type: string
+                example: '2026-09-02T12:29:29.465Z'
+              missingFields:
+                type: array
+                items:
+                  type: string
+                example:
+                - roleData.position
+                - height
+              hadFcmToken:
+                type: boolean
+                example: true
+              error:
+                type: string
+`;
+
+for (const filePath of files) {
+  let content = fs.readFileSync(filePath, "utf8");
+
+  // 1. Add Tag if not present
+  if (!content.includes("- name: Audit")) {
+    content = content.replace("paths:", `${auditTag}paths:`);
+  }
+
+  // 2. Add Paths if not present
+  if (!content.includes("/api/audit/run:")) {
+    content = content.replace("components:", `${auditPaths}components:`);
+  }
+
+  // 3. Add Schemas if not present
+  if (!content.includes("AuditReportResponse:")) {
+    content = content.replace("  responses:", `${auditSchemas}  responses:`);
+  }
+
+  fs.writeFileSync(filePath, content, "utf8");
+  console.log(`✅ Updated ${filePath}`);
+}

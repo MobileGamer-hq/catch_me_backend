@@ -6,6 +6,13 @@ const syncMinUsers = require("./syncMinUsers");
 const syncMinPosts = require("./syncMinPosts");
 const syncMinGames = require("./syncMinGames");
 const calculateXPJob = require("./calculateXP");
+const weeklyAuditJob = require("./weeklyAudit");
+
+// Run weekly data audit every Sunday at midnight (00:00)
+cron.schedule("0 0 * * 0", async () => {
+  console.log("Starting weekly data audit...");
+  await weeklyAuditJob();
+});
 
 // Calculate XP daily at 1 AM
 cron.schedule("0 1 * * *", async () => {
