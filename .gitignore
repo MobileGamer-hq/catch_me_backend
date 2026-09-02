@@ -1,6 +1,8 @@
 # .env file
 .env
 
+node_modules
+
 # Firebase service account key
 catch-me-beta-firebase-adminsdk-fbsvc-bf3e85ba88.json
 users_migrated.json

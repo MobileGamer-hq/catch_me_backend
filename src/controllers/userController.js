@@ -3,6 +3,8 @@ const { db, admin } = require("../config/firebase");
 const { GraphService } = require("../services/graph.service");
 const localSearchService = require("../services/localSearch.service");
 const { Cache } = require("../utils/cache");
+const pdfService = require("../services/pdf.service");
+const scouterService = require("../services/scouter.service");
 
 const getUsers = async (req, res) => {
   try {
@@ -262,6 +264,49 @@ const localSearchUsers = async (req, res) => {
   }
 };
 
+/**
+ * Generates and returns a URL link to download user/athlete scout PDF.
+ * POST /api/users/:id/export
+ */
+const exportUserPdfLink = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const downloadUrl = `${req.protocol}://${req.get("host")}/api/users/${userId}/download`;
+    res.status(200).json({ status: "SUCCESS", downloadUrl });
+  } catch (error) {
+    console.error("Error exporting user PDF link:", error);
+    res.status(500).json({ status: "FAILED", error: "Failed to generate user download link" });
+  }
+};
+
+/**
+ * Generates and streams an Athlete Scouting Dossier PDF.
+ * GET /api/users/:id/download OR GET /api/users/:id/export/pdf
+ */
+const downloadUserPdf = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await scouterService.getAthleteProfile(userId);
+
+    if (!user) {
+      return res.status(404).json({ status: "FAILED", error: "User profile not found" });
+    }
+
+    const pdfBuffer = await pdfService.generateAthleteProfilePdf(user);
+
+    const safeUsername = (user.username || user.name || userId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=scout_profile_${safeUsername}.pdf`
+    );
+    res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error("Error generating user profile PDF:", err);
+    res.status(err.message.includes("not found") ? 404 : 500).json({ status: "FAILED", error: "Failed to generate user PDF", details: err.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getUser,
@@ -269,4 +314,7 @@ module.exports = {
   searchUsers,
   getSuggestions,
   localSearchUsers,
+  exportUserPdfLink,
+  downloadUserPdf,
 };
+

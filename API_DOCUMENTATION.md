@@ -39,6 +39,18 @@ This document outlines the available API endpoints and background jobs for the C
 - **Endpoint**: `/:id/suggestions`
 - **Description**: Returns "You May Know" user recommendations for a given user ID.
 
+### Download Athlete Scouting Dossier PDF
+
+- **Method**: `GET`
+- **Endpoint**: `/:id/download` (or `/:id/pdf`)
+- **Description**: Generates and downloads a complete branded Athlete Scouting Report PDF with physical metrics, level/XP, stats, and profile QR code.
+
+### Export User PDF Link
+
+- **Method**: `POST`
+- **Endpoint**: `/:id/export`
+- **Description**: Generates and returns a downloadable URL link for the athlete profile PDF.
+
 ---
 
 ## 2. Events (`/api/events`)
@@ -94,6 +106,18 @@ This document outlines the available API endpoints and background jobs for the C
 - **Method**: `POST`
 - **Endpoint**: `/:id/end`
 - **Description**: Ends a specific game session.
+
+### Download Official Match Verification & Game Sheet PDF
+
+- **Method**: `GET`
+- **Endpoint**: `/:id/download`
+- **Description**: Generates and streams a match report PDF with Catch Me logo, live game QR code, score, timeline of goals/cards, team rosters, and referee/scouter certification lines.
+
+### Export Game PDF Link
+
+- **Method**: `POST`
+- **Endpoint**: `/:id/export`
+- **Description**: Generates and returns a downloadable URL link for the game sheet PDF.
 
 ---
 
@@ -157,7 +181,96 @@ This document outlines the available API endpoints and background jobs for the C
 
 ---
 
-## 8. Background Jobs & Scheduled Tasks
+## 8. QR Code & Link Engine (`/api/qr`)
+
+Provides direct PNG streaming QR codes, JSON Base64 data URLs, and mobile LinkUtils link parsing.
+
+### Generate Raw / Entity QR Code (PNG Image Stream or JSON)
+
+- **Method**: `GET`
+- **Endpoint**: `/?url={url}` or `/?type={type}&id={id}`
+- **Query Parameters**:
+  - `url` (optional): Raw URL to encode.
+  - `type` / `id` (optional): Entity type (`profile`, `game`, `lineup`, `stats`, `post`, `challenge`) and target document ID.
+  - `format` (optional): `png` (default, binary stream) or `json` (Base64 data URL).
+  - `size` (optional): Dimensions in px (default 300).
+  - `dark` / `light` (optional): Hex color strings (default `#1E1B4B` and `#FFFFFF`).
+
+### Direct Entity QR Shortcuts (PNG Image Streams)
+
+- `GET /profile/:userId` &rarr; PNG QR code linking to `https://app.catchme.live/profile?id=:userId`
+- `GET /game/:gameId` &rarr; PNG QR code linking to `https://app.catchme.live/game?id=:gameId`
+- `GET /game/:gameId/lineup` &rarr; PNG QR code linking to `https://app.catchme.live/game?id=:gameId&tab=lineup`
+- `GET /game/:gameId/stats` &rarr; PNG QR code linking to `https://app.catchme.live/game?id=:gameId&tab=stats`
+- `GET /post/:postId` &rarr; PNG QR code linking to `https://app.catchme.live/post?id=:postId`
+- `GET /challenge/:challengeId` &rarr; PNG QR code linking to `https://app.catchme.live/challenge?id=:challengeId`
+
+### Generate QR via JSON Payload
+
+- **Method**: `POST`
+- **Endpoint**: `/generate`
+- **Body**: `{ "type": "profile", "id": "123", "size": 320 }` or `{ "url": "https://..." }`
+- **Description**: Returns JSON with target `link`, Base64 `dataUrl`, and direct CDN `qrImageUrl`.
+
+### Parse & Identify Catch Me Link
+
+- **Method**: `GET` or `POST`
+- **Endpoint**: `/parse?link={link}`
+- **Description**: Parses query parameters and fragments with Flutter LinkUtils parity to extract entity `type` and `id`.
+
+---
+
+## 9. Scout & Organizer Portal & Export Suite (`/api/scout` & `/api/organizer`)
+
+Tablet-friendly web dashboard and official verification exports.
+
+### Scout & Organizer Tablet Web View
+
+- **Method**: `GET`
+- **Endpoint**: `/view` (or `/api/organizer/view` or `/`)
+- **Description**: Serves a responsive, tablet-optimized HTML dashboard with date and sport filters, 4 KPI tiles, top performers ranking, disciplinary log (cards), goal scorers timeline, match verification scoreboard cards, and 1-click PDF/CSV export buttons.
+
+### Daily Performance & Match Summary API
+
+- **Method**: `GET`
+- **Endpoint**: `/daily-summary`
+- **Query Parameters**: `date` (YYYY-MM-DD), `sport`, `tournamentId`.
+- **Description**: Returns JSON aggregated match data, top performers with ratings, disciplinary cards, and goal records.
+
+### Export Daily Summary PDF
+
+- **Method**: `GET`
+- **Endpoint**: `/daily-summary/pdf`
+- **Description**: Streams an official Catch Me branded Daily Summary PDF report with KPI tiles, top performers table, disciplinary card log, goals table, match results, and tournament director sign-off box.
+
+### Export Daily Summary CSV
+
+- **Method**: `GET`
+- **Endpoint**: `/daily-summary/csv`
+- **Query Parameters**: `date`, `sport`, `tournamentId`, `type` (`all`, `performers`, `cards`).
+- **Description**: Generates and streams structured CSV files for spreadsheet verification.
+
+### Export Athlete Scouting Dossier PDF
+
+- **Method**: `GET`
+- **Endpoint**: `/profile/:id/pdf` (or `/athlete/:id/pdf`)
+- **Description**: Generates an in-depth Athlete Scouting Report PDF containing player demographics, physical metrics (height/weight), level/XP, achievements, verified badge, performance stats, contact & verified social handles, and profile QR code.
+
+---
+
+## 10. Batch Entity Lookups (`/api/batch`)
+
+High-performance Redis-first batch fetching preventing client-side Firestore read spikes.
+
+- **Batch Users**: `POST /api/users/batch` with `{ "ids": ["id1", "id2"] }`
+- **Batch Posts**: `POST /api/posts/batch` with `{ "ids": ["id1", "id2"] }`
+- **Batch Events**: `POST /api/events/batch` with `{ "ids": ["id1", "id2"] }`
+- **Batch Games**: `POST /api/games/batch` with `{ "ids": ["id1", "id2"] }`
+- **Multi-Collection Batch**: `POST /api/batch` with `{ "users": [...], "posts": [...], "events": [...], "games": [...] }`
+
+---
+
+## 11. Background Jobs & Scheduled Tasks
 
 The backend runs multiple background operations to maintain system health, engagement tracking, and user recommendations.
 
@@ -173,3 +286,4 @@ The backend runs multiple background operations to maintain system health, engag
 - **Calculate Velocity (`calculateVelocity.js`)**:
   - **Schedule**: Batch / Periodic job.
   - **Description**: Analyzes posts from the last 48 hours to determine engagement velocity (change in score per hour). Helpful for identifying trending content.
+

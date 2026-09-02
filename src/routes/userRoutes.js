@@ -7,6 +7,8 @@ const {
   getUsers,
   getSuggestions,
   localSearchUsers,
+  exportUserPdfLink,
+  downloadUserPdf,
 } = require("../controllers/userController");
 const { getBatchByType } = require("../controllers/batchController");
 
@@ -22,6 +24,10 @@ router.get("/search", searchUsers); //search users by name, email, etc.
 router.get("/:id", getUser); //
 router.delete("/:id", deleteUser); //
 router.get("/:id/suggestions", getSuggestions); // "You May Know"
+router.post("/:id/export", exportUserPdfLink);
+router.get("/:id/download", downloadUserPdf);
+router.get("/:id/pdf", downloadUserPdf);
 
 module.exports = router;
+
 
